@@ -36,3 +36,11 @@ select = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["src/kleptography"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
