@@ -7,7 +7,13 @@ requires-python = ">=3.12"
 authors = [
     { name = "Daniel Pérez Ruiz", email = "danielperezruiz.pro@gmail.com" },
 ]
-dependencies = []
+dependencies = [
+    "sympy>=1.13",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
