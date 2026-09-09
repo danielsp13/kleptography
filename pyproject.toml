@@ -12,6 +12,7 @@ dependencies = []
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "coverage>=7.0",
     "ruff>=0.8",
     "ty>=0.0.1",
 ]
