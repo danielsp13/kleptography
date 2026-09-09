@@ -4,9 +4,7 @@ Prime number utilities.
 
 from __future__ import annotations
 
-from sympy import isprime
-from sympy import primitive_root
-from sympy import randprime
+from sympy import isprime, primitive_root, randprime
 
 
 def generate_prime(bits: int) -> int:
