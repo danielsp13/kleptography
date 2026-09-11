@@ -1,78 +1,83 @@
 """
-Tests for modular arithmetic utilities.
+Tests for prime number utilities.
 """
 
 from __future__ import annotations
 
-import pytest
+from sympy import isprime
 
-from kleptography.math.modular import (
-    is_coprime,
-    mod_inverse,
-    mod_pow,
+from kleptography.math.primes import (
+    generate_safe_prime,
+    generate_subgroup_generator,
 )
 
 
-@pytest.mark.parametrize(
-    ("base", "exponent", "modulus"),
-    [
-        (2, 10, 17),
-        (5, 117, 19),
-        (123, 456, 97),
-        (999, 12345, 65537),
-    ],
-)
-def test_mod_pow_matches_builtin(
-    base: int,
-    exponent: int,
-    modulus: int,
-) -> None:
-    """mod_pow should behave exactly like Python's built-in pow."""
-    assert mod_pow(base, exponent, modulus) == pow(base, exponent, modulus)
+def test_generate_safe_prime_returns_safe_prime() -> None:
+    """Generated safe primes must have a prime Sophie Germain subgroup order."""
+    prime = generate_safe_prime(128)
+
+    subgroup_order = (prime - 1) // 2
+
+    assert isprime(prime)
+    assert isprime(subgroup_order)
 
 
-@pytest.mark.parametrize(
-    ("value", "modulus", "expected"),
-    [
-        (3, 11, 4),
-        (7, 13, 2),
-        (10, 17, 12),
-    ],
-)
-def test_mod_inverse_returns_expected_inverse(
-    value: int,
-    modulus: int,
-    expected: int,
-) -> None:
-    """Known modular inverses should be computed correctly."""
-    assert mod_inverse(value, modulus) == expected
+def test_generate_safe_prime_has_requested_bit_length() -> None:
+    """Generated safe prime should have the requested bit length."""
+    bits = 128
+
+    prime = generate_safe_prime(bits)
+
+    assert prime.bit_length() == bits
 
 
-def test_mod_inverse_satisfies_definition() -> None:
-    """a * a⁻¹ ≡ 1 (mod m)."""
-    inverse = mod_inverse(12345, 65537)
+def test_generate_safe_prime_has_expected_structure() -> None:
+    """A safe prime must satisfy p = 2q + 1."""
+    prime = generate_safe_prime(128)
 
-    assert (12345 * inverse) % 65537 == 1
+    subgroup_order = (prime - 1) // 2
 
-
-def test_mod_inverse_raises_if_inverse_does_not_exist() -> None:
-    """Numbers that are not coprime have no inverse."""
-    with pytest.raises(ValueError):
-        mod_inverse(6, 12)
+    assert prime == 2 * subgroup_order + 1
 
 
-@pytest.mark.parametrize(
-    ("a", "b", "expected"),
-    [
-        (7, 13, True),
-        (12, 18, False),
-        (35, 64, True),
-    ],
-)
-def test_is_coprime(
-    a: int,
-    b: int,
-    expected: bool,
-) -> None:
-    """Verify coprimality detection."""
-    assert is_coprime(a, b) is expected
+def test_generate_subgroup_generator_has_correct_order() -> None:
+    """
+    A generator of the DH subgroup must have order q.
+
+    For a safe prime p = 2q + 1:
+
+        g^q ≡ 1 (mod p)
+
+    and, because q is prime and g != 1, the order of g is exactly q.
+    """
+    prime = generate_safe_prime(128)
+    subgroup_order = (prime - 1) // 2
+
+    generator = generate_subgroup_generator(prime)
+
+    assert generator != 1
+    assert pow(generator, subgroup_order, prime) == 1
+
+
+def test_generate_subgroup_generator_belongs_to_subgroup() -> None:
+    """The generated value must be a non-zero element modulo p."""
+    prime = generate_safe_prime(128)
+
+    generator = generate_subgroup_generator(prime)
+
+    assert 1 < generator < prime
+
+
+def test_generate_subgroup_generator_is_not_a_primitive_root() -> None:
+    """
+    A subgroup generator has order q, not p - 1.
+
+    Therefore g^q = 1 while a primitive root would have g^q != 1.
+    """
+    prime = generate_safe_prime(128)
+    subgroup_order = (prime - 1) // 2
+
+    generator = generate_subgroup_generator(prime)
+
+    assert pow(generator, subgroup_order, prime) == 1
+    assert pow(generator, 2, prime) != 1

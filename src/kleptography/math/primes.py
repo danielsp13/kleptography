@@ -7,31 +7,9 @@ from __future__ import annotations
 from sympy import isprime, primitive_root, randprime
 
 
-def generate_prime(bits: int) -> int:
-    """
-    Generate a random prime with approximately the requested bit length.
-
-    Args:
-        bits: The requested bit length of the prime.
-
-    Returns:
-        A randomly generated prime with ``bits`` bits.
-
-    Raises:
-        ValueError: If ``bits`` is less than two.
-    """
-    if bits < 2:
-        raise ValueError("bits must be at least 2.")
-
-    lower = 1 << (bits - 1)
-    upper = 1 << bits
-
-    return int(randprime(lower, upper))
-
-
 def generate_safe_prime(bits: int) -> int:
     """
-    Generate a random safe prime with approximately the requested bit length.
+    Generate a random safe prime with the requested bit length.
 
     A safe prime is a prime ``p`` such that ``p = 2q + 1``, where ``q`` is
     also prime.
@@ -59,42 +37,31 @@ def generate_safe_prime(bits: int) -> int:
             return p
 
 
-def is_prime(value: int) -> bool:
+def generate_subgroup_generator(prime: int) -> int:
     """
-    Determine whether an integer is prime.
+    Generate a generator of the order-(p - 1) / 2 subgroup modulo a safe prime.
 
     Args:
-        value: The integer to test.
+        prime: A safe prime.
 
     Returns:
-        ``True`` if ``value`` is prime, otherwise ``False``.
-    """
-    return bool(isprime(value))
-
-
-def generate_generator(prime: int) -> int:
-    """
-    Generate a primitive root modulo a prime.
-
-    The returned value generates the multiplicative group of integers
-    modulo ``prime``.
-
-    Args:
-        prime: The prime modulus for which to find a primitive root.
-
-    Returns:
-        A primitive root modulo ``prime``.
+        An element of order ``(prime - 1) // 2``.
 
     Raises:
-        ValueError: If ``prime`` is not prime.
+        ValueError: If ``prime`` is not a safe prime.
         RuntimeError: If no primitive root can be found.
     """
     if not isprime(prime):
         raise ValueError("prime must be prime.")
 
-    generator = primitive_root(prime)
+    subgroup_order = (prime - 1) // 2
 
-    if generator is None:
+    if not isprime(subgroup_order):
+        raise ValueError("prime must be a safe prime.")
+
+    primitive_root_value = primitive_root(prime)
+
+    if primitive_root_value is None:
         raise RuntimeError("No primitive root found.")
 
-    return int(generator)
+    return pow(int(primitive_root_value), 2, prime)
