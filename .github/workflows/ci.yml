@@ -18,8 +18,11 @@ jobs:
           python-version: "3.12"
           enable-cache: true
 
-      - name: Run Ruff
+      - name: Run Ruff check
         run: uv run --locked ruff check .
+
+      - name: Check Ruff format
+        run: uv run --locked ruff format --check .
 
   typecheck:
     name: Type check
