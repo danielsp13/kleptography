@@ -13,66 +13,88 @@ from kleptography.math.modular import (
 )
 
 
-@pytest.mark.parametrize(
-    ("base", "exponent", "modulus"),
-    [
-        (2, 10, 17),
-        (5, 117, 19),
-        (123, 456, 97),
-        (999, 12345, 65537),
-    ],
-)
-def test_mod_pow_matches_builtin(
-    base: int,
-    exponent: int,
-    modulus: int,
-) -> None:
-    """mod_pow should behave exactly like Python's built-in pow."""
-    assert mod_pow(base, exponent, modulus) == pow(base, exponent, modulus)
+def test_mod_pow_returns_modular_power() -> None:
+    """mod_pow should return the modular exponentiation result."""
+    assert mod_pow(2, 10, 1000) == 24
 
 
-@pytest.mark.parametrize(
-    ("value", "modulus", "expected"),
-    [
-        (3, 11, 4),
-        (7, 13, 2),
-        (10, 17, 12),
-    ],
-)
-def test_mod_inverse_returns_expected_inverse(
-    value: int,
-    modulus: int,
-    expected: int,
-) -> None:
-    """Known modular inverses should be computed correctly."""
-    assert mod_inverse(value, modulus) == expected
+def test_mod_pow_handles_negative_base() -> None:
+    """mod_pow should correctly handle negative bases."""
+    assert mod_pow(-2, 3, 5) == 2
 
 
-def test_mod_inverse_satisfies_definition() -> None:
-    """a * a⁻¹ ≡ 1 (mod m)."""
-    inverse = mod_inverse(12345, 65537)
+def test_mod_pow_rejects_non_positive_modulus() -> None:
+    """mod_pow should reject zero and negative moduli."""
+    with pytest.raises(ValueError, match="modulus must be positive"):
+        mod_pow(2, 3, 0)
 
-    assert (12345 * inverse) % 65537 == 1
-
-
-def test_mod_inverse_raises_if_inverse_does_not_exist() -> None:
-    """Numbers that are not coprime have no inverse."""
-    with pytest.raises(ValueError):
-        mod_inverse(6, 12)
+    with pytest.raises(ValueError, match="modulus must be positive"):
+        mod_pow(2, 3, -5)
 
 
-@pytest.mark.parametrize(
-    ("a", "b", "expected"),
-    [
-        (7, 13, True),
-        (12, 18, False),
-        (35, 64, True),
-    ],
-)
-def test_is_coprime(
-    a: int,
-    b: int,
-    expected: bool,
-) -> None:
-    """Verify coprimality detection."""
-    assert is_coprime(a, b) is expected
+def test_mod_inverse_returns_multiplicative_inverse() -> None:
+    """mod_inverse should return an inverse when values are coprime."""
+    inverse = mod_inverse(3, 11)
+
+    assert inverse == 4
+    assert (3 * inverse) % 11 == 1
+
+
+def test_mod_inverse_handles_negative_value() -> None:
+    """mod_inverse should correctly handle negative values."""
+    inverse = mod_inverse(-3, 11)
+
+    assert inverse == 7
+    assert (-3 * inverse) % 11 == 1
+
+
+def test_mod_inverse_rejects_modulus_equal_to_one() -> None:
+    """mod_inverse should reject modulus values less than or equal to one."""
+    with pytest.raises(
+        ValueError,
+        match="modulus must be greater than one",
+    ):
+        mod_inverse(3, 1)
+
+
+def test_mod_inverse_rejects_zero_modulus() -> None:
+    """mod_inverse should reject a zero modulus."""
+    with pytest.raises(
+        ValueError,
+        match="modulus must be greater than one",
+    ):
+        mod_inverse(3, 0)
+
+
+def test_mod_inverse_rejects_negative_modulus() -> None:
+    """mod_inverse should reject a negative modulus."""
+    with pytest.raises(
+        ValueError,
+        match="modulus must be greater than one",
+    ):
+        mod_inverse(3, -11)
+
+
+def test_mod_inverse_rejects_non_coprime_values() -> None:
+    """mod_inverse should reject values without a multiplicative inverse."""
+    with pytest.raises(
+        ValueError,
+        match="has no multiplicative inverse",
+    ):
+        mod_inverse(6, 9)
+
+
+def test_is_coprime_returns_true_for_coprime_values() -> None:
+    """is_coprime should return True when gcd is one."""
+    assert is_coprime(8, 15) is True
+
+
+def test_is_coprime_returns_false_for_non_coprime_values() -> None:
+    """is_coprime should return False when gcd is greater than one."""
+    assert is_coprime(8, 12) is False
+
+
+def test_is_coprime_handles_zero() -> None:
+    """is_coprime should correctly handle zero."""
+    assert is_coprime(1, 0) is True
+    assert is_coprime(2, 0) is False
