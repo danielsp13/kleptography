@@ -169,9 +169,7 @@ src/kleptography/math/primes.py
 
 | Function                             | Purpose                                                                         |
 | ------------------------------------ | ------------------------------------------------------------------------------- |
-| `generate_prime(bits)`               | Generate a random prime with the requested bit length.                          |
 | `generate_safe_prime(bits)`          | Generate a random safe prime with the requested bit length.                     |
-| `is_prime(value)`                    | Check whether an integer is prime.                                              |
 | `generate_subgroup_generator(prime)` | Generate a generator for the intended prime-order subgroup modulo a safe prime. |
 
 > Note: the current implementation/API uses
