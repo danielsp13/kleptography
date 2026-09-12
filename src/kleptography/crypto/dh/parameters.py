@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from kleptography.crypto.dh.validation import validate_parameters
 from kleptography.math.primes import (
     generate_safe_prime,
     generate_subgroup_generator,
@@ -25,6 +26,14 @@ class DiffieHellmanParameters:
     prime: int
     generator: int
     subgroup_order: int
+
+    def __post_init__(self) -> None:
+        """Validate the mathematical invariants of the DH parameters."""
+        validate_parameters(
+            prime=self.prime,
+            generator=self.generator,
+            subgroup_order=self.subgroup_order,
+        )
 
     @property
     def bit_length(self) -> int:

@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from secrets import randbelow
 
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
+from kleptography.crypto.dh.validation import (
+    validate_private_key,
+    validate_public_key,
+)
 from kleptography.math.modular import mod_pow
 
 
@@ -34,7 +38,14 @@ class DiffieHellmanParticipant:
         The exponent belongs to [1, q - 1], where q is the order
         of the subgroup used by the DH parameters.
         """
-        return randbelow(self.parameters.subgroup_order - 1) + 1
+        private_key = randbelow(self.parameters.subgroup_order - 1) + 1
+
+        validate_private_key(
+            private_key,
+            subgroup_order=self.parameters.subgroup_order,
+        )
+
+        return private_key
 
     def _compute_public_key(self, private_key: int) -> int:
         """Compute the public value g^x mod p."""
@@ -52,11 +63,20 @@ class DiffieHellmanParticipant:
         ------
         RuntimeError
             If no key pair has been generated.
+        ValueError
+            If the peer's public value is invalid or does not belong
+            to the expected subgroup.
         """
         if self.private_key is None:
             raise RuntimeError(
                 "Key pair has not been generated. Call generate_keypair() first."
             )
+
+        validate_public_key(
+            peer_public_key,
+            prime=self.parameters.prime,
+            subgroup_order=self.parameters.subgroup_order,
+        )
 
         return mod_pow(
             peer_public_key,
