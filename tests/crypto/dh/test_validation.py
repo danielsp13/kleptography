@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import pytest
 
+from kleptography.crypto.dh.exceptions import (
+    InvalidDiffieHellmanParameters,
+    InvalidPrivateKey,
+    InvalidPublicKey,
+)
 from kleptography.crypto.dh.validation import (
     validate_parameters,
     validate_private_key,
@@ -21,7 +26,7 @@ def test_validate_parameters() -> None:
 def test_validate_parameters_rejects_small_prime() -> None:
     """A prime modulus must be greater than 2."""
     with pytest.raises(
-        ValueError,
+        InvalidDiffieHellmanParameters,
         match="DH prime must be greater than 2.",
     ):
         validate_parameters(
@@ -34,7 +39,7 @@ def test_validate_parameters_rejects_small_prime() -> None:
 def test_validate_parameters_rejects_small_subgroup_order() -> None:
     """The subgroup order must be greater than 1."""
     with pytest.raises(
-        ValueError,
+        InvalidDiffieHellmanParameters,
         match="DH subgroup order must be greater than 1.",
     ):
         validate_parameters(
@@ -47,8 +52,8 @@ def test_validate_parameters_rejects_small_subgroup_order() -> None:
 def test_validate_parameters_rejects_generator_outside_range() -> None:
     """The generator must be between 1 and the prime modulus."""
     with pytest.raises(
-        ValueError,
-        match="DH generator must satisfy 1 < generator < prime.",
+        InvalidDiffieHellmanParameters,
+        match=r"DH generator must satisfy 1 < generator < prime\.",
     ):
         validate_parameters(
             prime=23,
@@ -60,8 +65,8 @@ def test_validate_parameters_rejects_generator_outside_range() -> None:
 def test_validate_parameters_rejects_invalid_safe_prime_relation() -> None:
     """The modulus and subgroup order must satisfy p = 2q + 1."""
     with pytest.raises(
-        ValueError,
-        match=r"DH parameters must satisfy prime = 2 \* subgroup_order \+ 1.",
+        InvalidDiffieHellmanParameters,
+        match=r"DH parameters must satisfy prime = 2 \* subgroup_order \+ 1\.",
     ):
         validate_parameters(
             prime=23,
@@ -73,7 +78,7 @@ def test_validate_parameters_rejects_invalid_safe_prime_relation() -> None:
 def test_validate_parameters_rejects_generator_outside_subgroup() -> None:
     """The generator must belong to the subgroup of order q."""
     with pytest.raises(
-        ValueError,
+        InvalidDiffieHellmanParameters,
         match="DH generator must belong to the subgroup of order q.",
     ):
         validate_parameters(
@@ -110,8 +115,8 @@ def test_validate_private_key_accepts_upper_bound() -> None:
 def test_validate_private_key_rejects_zero() -> None:
     """Zero is not a valid private exponent."""
     with pytest.raises(
-        ValueError,
-        match="DH private key must satisfy 1 <= private_key < subgroup_order.",
+        InvalidPrivateKey,
+        match=r"DH private key must satisfy 1 <= private_key < subgroup_order\.",
     ):
         validate_private_key(
             0,
@@ -122,8 +127,8 @@ def test_validate_private_key_rejects_zero() -> None:
 def test_validate_private_key_rejects_subgroup_order() -> None:
     """The subgroup order itself is outside the valid range."""
     with pytest.raises(
-        ValueError,
-        match="DH private key must satisfy 1 <= private_key < subgroup_order.",
+        InvalidPrivateKey,
+        match=r"DH private key must satisfy 1 <= private_key < subgroup_order\.",
     ):
         validate_private_key(
             11,
@@ -143,8 +148,8 @@ def test_validate_public_key() -> None:
 def test_validate_public_key_rejects_identity() -> None:
     """The identity element is not accepted as a public key."""
     with pytest.raises(
-        ValueError,
-        match="DH public key must satisfy 1 < public_key < prime.",
+        InvalidPublicKey,
+        match=r"DH public key must satisfy 1 < public_key < prime\.",
     ):
         validate_public_key(
             1,
@@ -156,8 +161,8 @@ def test_validate_public_key_rejects_identity() -> None:
 def test_validate_public_key_rejects_zero() -> None:
     """Zero is not a valid public key."""
     with pytest.raises(
-        ValueError,
-        match="DH public key must satisfy 1 < public_key < prime.",
+        InvalidPublicKey,
+        match=r"DH public key must satisfy 1 < public_key < prime\.",
     ):
         validate_public_key(
             0,
@@ -169,8 +174,8 @@ def test_validate_public_key_rejects_zero() -> None:
 def test_validate_public_key_rejects_prime() -> None:
     """The modulus itself is not a valid public key."""
     with pytest.raises(
-        ValueError,
-        match="DH public key must satisfy 1 < public_key < prime.",
+        InvalidPublicKey,
+        match=r"DH public key must satisfy 1 < public_key < prime\.",
     ):
         validate_public_key(
             23,
@@ -182,7 +187,7 @@ def test_validate_public_key_rejects_prime() -> None:
 def test_validate_public_key_rejects_value_outside_subgroup() -> None:
     """A field element outside the expected subgroup is rejected."""
     with pytest.raises(
-        ValueError,
+        InvalidPublicKey,
         match="DH public key does not belong to the expected subgroup.",
     ):
         validate_public_key(

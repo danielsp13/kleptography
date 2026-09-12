@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from kleptography.crypto.dh.exceptions import DiffieHellmanStateError
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.participant import DiffieHellmanParticipant
 
@@ -81,11 +82,11 @@ def test_compute_shared_secret(
 def test_compute_shared_secret_requires_keypair(
     parameters: DiffieHellmanParameters,
 ) -> None:
-    """Computing a secret before key generation raises RuntimeError."""
+    """Computing a secret before key generation raises DiffieHellmanStateError."""
     participant = DiffieHellmanParticipant(parameters)
 
     with pytest.raises(
-        RuntimeError,
+        DiffieHellmanStateError,
         match="Key pair has not been generated. Call generate_keypair\\(\\) first.",
     ):
         participant.compute_shared_secret(2)

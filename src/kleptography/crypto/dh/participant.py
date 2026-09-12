@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from secrets import randbelow
 
+from kleptography.crypto.dh.exceptions import DiffieHellmanStateError
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.validation import (
     validate_private_key,
@@ -61,14 +62,14 @@ class DiffieHellmanParticipant:
 
         Raises
         ------
-        RuntimeError
+        DiffieHellmanStateError
             If no key pair has been generated.
-        ValueError
+        InvalidPublicKey
             If the peer's public value is invalid or does not belong
             to the expected subgroup.
         """
         if self.private_key is None:
-            raise RuntimeError(
+            raise DiffieHellmanStateError(
                 "Key pair has not been generated. Call generate_keypair() first."
             )
 
