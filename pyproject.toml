@@ -8,6 +8,7 @@ authors = [
     { name = "Daniel Pérez Ruiz", email = "danielperezruiz.pro@gmail.com" },
 ]
 dependencies = [
+    "streamlit>=1.63.0",
     "sympy>=1.13",
 ]
 
