@@ -89,10 +89,10 @@
 .site-header__logo {
     display: block;
 
-    width: 128px;
-    height: 128px;
+    width: 160px;
+    height: 160px;
 
-    flex: 0 0 128px;
+    flex: 0 0 160px;
 
     object-fit: contain;
 }
