@@ -55,13 +55,16 @@ def build_home_content() -> str:
         "primary conceptual starting point."
     )
 
-    content.paragraph(
-        content.bold("Reference"),
-        "\n\n",
-        "A. L. Young and M. Yung, "
-        '"Kleptography: Using Cryptography Against Cryptography," '
-        "in Advances in Cryptology — EUROCRYPT '97, "
-        "LNCS 1233, pp. 62–74, Springer, 1997.",
+    content.block(
+        CalloutComposer.info(
+            content=(
+                "A. L. Young and M. Yung, "
+                '"Kleptography: Using Cryptography Against Cryptography," '
+                "in Advances in Cryptology — EUROCRYPT '97, "
+                "LNCS 1233, pp. 62–74, Springer, 1997."
+            ),
+            title="Reference",
+        )
     )
 
     content.divider()
