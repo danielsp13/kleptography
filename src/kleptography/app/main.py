@@ -1,6 +1,6 @@
 import streamlit as st
 
-from kleptography.app.content.home import build_home_content
+from kleptography.app.pages.home import render_page_home
 
 
 def main() -> None:
@@ -10,7 +10,7 @@ def main() -> None:
         layout="wide",
     )
 
-    st.markdown(build_home_content())
+    render_page_home()
 
 
 if __name__ == "__main__":
