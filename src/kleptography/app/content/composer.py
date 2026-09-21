@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from kleptography.app.content.callouts import CalloutComposer
+
 
 class ContentComposer:
     """Compose educational content as Markdown."""
@@ -43,6 +45,10 @@ class ContentComposer:
 
     def image(self, src: str, alt: str = "") -> ContentComposer:
         self._blocks.append(f"![{alt}]({src})")
+        return self
+
+    def block(self, content: str | CalloutComposer) -> ContentComposer:
+        self._blocks.append(content if isinstance(content, str) else content.build())
         return self
 
     @staticmethod
