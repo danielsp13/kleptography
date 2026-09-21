@@ -1,0 +1,95 @@
+<footer class="site-footer">
+
+  <div class="site-footer__main">
+
+
+<div class="site-footer__identity">
+
+  <span class="site-footer__name">
+    {{ title }}
+  </span>
+
+  <span
+    class="site-footer__separator"
+    aria-hidden="true"
+  >•</span>
+
+  <span class="site-footer__copyright">
+    © {{ year }} {{ author_name }}
+  </span>
+
+</div>
+
+
+<nav
+  class="site-footer__links"
+  aria-label="Footer links"
+>
+
+  {%- if repository_url %}
+  <a
+    class="site-footer__link"
+    href="{{ repository_url }}"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    Repository
+  </a>
+  {%- endif %}
+
+  {%- if documentation_url %}
+  <a
+    class="site-footer__link"
+    href="{{ documentation_url }}"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    Documentation
+  </a>
+  {%- endif %}
+
+  {%- if license_url %}
+  <a
+    class="site-footer__link"
+    href="{{ license_url }}"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    License
+  </a>
+  {%- endif %}
+
+</nav>
+
+
+<div class="site-footer__status">
+
+  <span
+    class="site-footer__status-dot"
+    aria-hidden="true"
+  ></span>
+
+  <span class="site-footer__status-text">
+    v{{ version }}
+  </span>
+
+</div>
+
+
+  </div>
+
+  <div class="site-footer__bottom">
+
+
+<span class="site-footer__tagline">
+  {{ subtitle }}
+</span>
+
+<span class="site-footer__signature">
+  {{ release_date }}
+</span>
+
+
+  </div>
+
+</footer>

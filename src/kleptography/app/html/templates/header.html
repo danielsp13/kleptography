@@ -1,0 +1,171 @@
+<header class="site-header">
+
+  <div class="site-header__brand">
+
+    <img
+      class="site-header__logo"
+      src="{{ logo }}"
+      alt="{{ title }} logo"
+      width="128"
+      height="128"
+    >
+
+    <div class="site-header__brand-text">
+
+      <div class="site-header__title-row">
+        <h1 class="site-header__title">{{ title }}</h1>
+        <span class="site-header__title-separator" aria-hidden="true">•</span>
+        <div class="site-header__subtitle">{{ subtitle }}</div>
+      </div>
+
+      <div class="site-header__description">
+        {{ description }}
+      </div>
+
+    </div>
+
+    <div class="site-header__badges">
+
+      <span class="site-header__pill site-header__pill--accent">
+        <span class="site-header__pill-label">Version</span>
+        <span class="site-header__pill-value">{{ version }}</span>
+      </span>
+
+      <span class="site-header__pill site-header__pill--accent">
+        <span class="site-header__pill-label">Release date</span>
+        <span class="site-header__pill-value">{{ release_date }}</span>
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div class="site-header__divider" role="separator"></div>
+
+
+  <!-- ========================================================
+       2. Author
+       ======================================================== -->
+
+  <div class="site-header__author-section">
+
+    <div class="site-header__author">
+
+      <div class="site-header__author-name">
+        {{ author_name }}
+      </div>
+
+      <div class="site-header__author-role">
+        {{ author_role }}
+        <a
+          class="site-header__author-company"
+          href="{{ company_url }}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >{{ company }}</a>
+      </div>
+
+    </div>
+
+
+    <nav class="site-header__links" aria-label="Author links">
+
+      {%- if linkedin_url %}
+      <a
+        class="site-header__pill site-header__author-pill"
+        href="{{ linkedin_url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        LinkedIn
+      </a>
+      {%- endif %}
+
+
+      {%- if github_url %}
+      <a
+        class="site-header__pill site-header__author-pill"
+        href="{{ github_url }}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        GitHub
+      </a>
+      {%- endif %}
+
+
+      {%- if email %}
+      <a
+        class="site-header__pill site-header__author-pill"
+        href="mailto:{{ email }}"
+      >
+        Email
+      </a>
+      {%- endif %}
+
+    </nav>
+
+  </div>
+
+
+  <div class="site-header__divider" role="separator"></div>
+
+
+  <!-- ========================================================
+       3. Tags / Kleptographic mechanisms
+       ======================================================== -->
+
+  <div class="site-header__metadata">
+
+    <!-- Project tags -->
+
+    <section class="site-header__metadata-group" aria-labelledby="site-header-tags-title">
+
+      <h2
+        id="site-header-tags-title"
+        class="site-header__metadata-title"
+      >
+        Tags
+      </h2>
+
+      <div class="site-header__tags">
+
+        {%- for tag in tags %}
+        <span class="site-header__tag">{{ tag }}</span>
+        {%- endfor %}
+
+      </div>
+
+    </section>
+
+
+    <!-- Available kleptographic mechanisms -->
+
+    <section
+      class="site-header__metadata-group site-header__metadata-group--mechanisms"
+      aria-labelledby="site-header-mechanisms-title"
+    >
+
+      <h2
+        id="site-header-mechanisms-title"
+        class="site-header__metadata-title"
+      >
+        Kleptographic available mechanisms
+      </h2>
+
+      <div class="site-header__mechanisms">
+
+        {%- for mechanism in kleptographic_mechanisms %}
+        <span class="site-header__mechanism">
+          {{ mechanism }}
+        </span>
+        {%- endfor %}
+
+      </div>
+
+    </section>
+
+  </div>
+
+</header>

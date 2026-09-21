@@ -1,0 +1,590 @@
+/* ============================================================
+   Site header
+   ============================================================ */
+
+.site-header {
+    /* ---- Colores ---- */
+    --sh-border: #30353d;
+    --sh-surface: #242930;
+    --sh-surface-hover: #2b3139;
+    --sh-pill-border: #343a43;
+
+    --sh-text: #f4f5f7;
+    --sh-text-soft: #d5dae0;
+    --sh-text-muted: #aeb5bf;
+    --sh-text-faint: #8f99a6;
+
+    /* Acento */
+    --sh-accent: #8fa8ff;
+    --sh-accent-bg: rgba(143, 168, 255, 0.12);
+    --sh-accent-border: rgba(143, 168, 255, 0.35);
+
+    /* Tags */
+    --sh-tag-bg: #1a2744;
+    --sh-tag-border: #27385f;
+    --sh-tag-text: #a9bde8;
+
+    /* Mecanismos implementados */
+    --sh-mechanism-bg: rgba(72, 187, 120, 0.14);
+    --sh-mechanism-border: rgba(72, 187, 120, 0.42);
+    --sh-mechanism-text: #8fe0aa;
+
+    /* ---- Tamaños de texto ---- */
+    --sh-fs-title: 2.35rem;
+    --sh-fs-subtitle: 1.45rem;
+    --sh-fs-description: 1rem;
+
+    /* Autoría */
+    --sh-fs-author: 1.55rem;
+    --sh-fs-role: 1.2rem;
+
+    /* Pills */
+    --sh-fs-chip: 0.95rem;
+
+    /* Metadata */
+    --sh-fs-metadata-title: 0.8rem;
+    --sh-fs-tag: 0.9rem;
+    --sh-fs-mechanism: 0.9rem;
+
+    /* Espacio vertical entre secciones */
+    --sh-section-gap: 1.125rem;
+
+    padding: 1.5rem 1.75rem;
+
+    border: 1px solid var(--sh-border);
+    border-radius: 1rem;
+
+    background: linear-gradient(135deg, #20242a, #181b20);
+
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+
+/* ============================================================
+   Dividers
+   ============================================================ */
+
+.site-header__divider {
+    height: 1px;
+
+    margin: var(--sh-section-gap) 0;
+
+    background: var(--sh-border);
+}
+
+
+/* ============================================================
+   1. Brand
+   ============================================================ */
+
+.site-header__brand {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    gap: 1rem 1.5rem;
+}
+
+
+.site-header__logo {
+    display: block;
+
+    width: 128px;
+    height: 128px;
+
+    flex: 0 0 128px;
+
+    object-fit: contain;
+}
+
+
+.site-header__brand-text {
+    flex: 1 1 20rem;
+
+    min-width: 0;
+}
+
+
+.site-header__title-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+
+    gap: 0.75rem 1rem;
+}
+
+
+.site-header .site-header__title {
+    margin: 0;
+    padding: 0;
+
+    color: var(--sh-text);
+
+    font-size: var(--sh-fs-title);
+    font-weight: 800;
+
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+}
+
+
+.site-header__title-separator {
+    color: var(--sh-text-faint);
+
+    font-size: 1.25rem;
+    font-weight: 700;
+
+    line-height: 1;
+
+    opacity: 0.7;
+}
+
+
+.site-header__subtitle {
+    margin: 0;
+
+    color: var(--sh-text-muted);
+
+    font-size: var(--sh-fs-subtitle);
+    font-weight: 400;
+
+    line-height: 1.25;
+}
+
+
+.site-header__description {
+    margin-top: 0.5rem;
+
+    color: var(--sh-text-faint);
+
+    font-size: var(--sh-fs-description);
+    font-weight: 400;
+
+    line-height: 1.4;
+}
+
+
+/* ============================================================
+   Version / Release date
+   ============================================================ */
+
+.site-header__badges {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+
+    gap: 0.5rem;
+
+    margin-left: auto;
+}
+
+
+/* ============================================================
+   Pills
+   ============================================================ */
+
+.site-header__pill {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 0.5rem;
+
+    padding: 0.3rem 0.75rem;
+
+    border: 1px solid var(--sh-pill-border);
+    border-radius: 999px;
+
+    background: var(--sh-surface);
+
+    color: var(--sh-text-soft);
+
+    font-size: var(--sh-fs-chip);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    line-height: 1.2;
+
+    text-decoration: none;
+
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease;
+}
+
+
+a.site-header__pill:hover {
+    background: var(--sh-surface-hover);
+    color: #ffffff;
+}
+
+
+a.site-header__pill:focus-visible,
+.site-header__author-company:focus-visible {
+    outline: 2px solid var(--sh-accent);
+    outline-offset: 2px;
+}
+
+
+/* ============================================================
+   Accent pills
+   ============================================================ */
+
+.site-header__pill--accent {
+    display: flex;
+
+    width: 17rem;
+    min-width: 17rem;
+
+    gap: 0;
+
+    padding: 0;
+
+    overflow: hidden;
+
+    border-color: var(--sh-accent-border);
+
+    background: var(--sh-accent-bg);
+
+    color: var(--sh-accent);
+}
+
+
+.site-header__pill-label {
+    box-sizing: border-box;
+
+    width: 8.75rem;
+    min-width: 8.75rem;
+
+    padding: 0.3rem 0.75rem;
+
+    border-right: 1px solid var(--sh-accent-border);
+
+    font-weight: 500;
+
+    opacity: 0.75;
+}
+
+
+.site-header__pill-value {
+    box-sizing: border-box;
+
+    flex: 1;
+
+    padding: 0.3rem 0.75rem;
+
+    font-weight: 700;
+
+    text-align: center;
+}
+
+
+/* ============================================================
+   2. Author
+   ============================================================ */
+
+.site-header__author-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+
+    gap: 1rem 1.5rem;
+}
+
+
+.site-header__author {
+    display: flex;
+    flex-direction: column;
+
+    gap: 0.2rem;
+
+    min-width: 0;
+}
+
+
+.site-header__author-name {
+    color: var(--sh-text);
+
+    font-size: var(--sh-fs-author);
+    font-weight: 800;
+
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+}
+
+
+.site-header__author-role {
+    color: var(--sh-text-muted);
+
+    font-size: var(--sh-fs-role);
+    font-weight: 400;
+
+    line-height: 1.3;
+}
+
+
+.site-header__author-company {
+    color: #d9dee5;
+
+    font-weight: 600;
+
+    text-decoration: none;
+}
+
+
+.site-header__author-company:hover {
+    color: #ffffff;
+
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+
+.site-header__links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+
+    gap: 0.5rem;
+
+    margin-left: auto;
+}
+
+
+.site-header__author-pill {
+    background: rgba(255, 255, 255, 0.035);
+
+    border-color: #414852;
+
+    color: var(--sh-text-soft);
+}
+
+
+.site-header__author-pill:hover {
+    border-color: var(--sh-accent-border);
+
+    background: var(--sh-accent-bg);
+
+    color: var(--sh-text);
+}
+
+
+/* ============================================================
+   3. Metadata
+   ============================================================ */
+
+.site-header__metadata {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+
+    gap: 2rem;
+
+    width: 100%;
+}
+
+
+.site-header__metadata-group {
+    display: flex;
+    flex-direction: column;
+
+    gap: 0.45rem;
+
+    min-width: 0;
+}
+
+
+.site-header__metadata-group--mechanisms {
+    align-items: flex-end;
+
+    text-align: right;
+}
+
+
+.site-header__metadata-title {
+    margin: 0;
+    padding: 0;
+
+    color: var(--sh-text-faint);
+
+    font-size: var(--sh-fs-metadata-title);
+    font-weight: 700;
+
+    line-height: 1.2;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+
+/* ============================================================
+   Tags
+   ============================================================ */
+
+.site-header__tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+
+    gap: 0.5rem;
+
+    width: 100%;
+}
+
+
+.site-header__tag {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 0.3rem 0.75rem;
+
+    border: 1px solid var(--sh-tag-border);
+    border-radius: 999px;
+
+    background: var(--sh-tag-bg);
+
+    color: var(--sh-tag-text);
+
+    font-size: var(--sh-fs-tag);
+    font-weight: 500;
+
+    line-height: 1.2;
+
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   Kleptographic available mechanisms
+   ============================================================ */
+
+.site-header__mechanisms {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 0.5rem;
+
+    width: 100%;
+}
+
+
+.site-header__mechanism {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 0.3rem 0.75rem;
+
+    border: 1px solid var(--sh-mechanism-border);
+    border-radius: 999px;
+
+    background: var(--sh-mechanism-bg);
+
+    color: var(--sh-mechanism-text);
+
+    font-size: var(--sh-fs-mechanism);
+    font-weight: 700;
+
+    line-height: 1.2;
+
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 640px) {
+
+    .site-header {
+        --sh-fs-title: 2rem;
+        --sh-fs-subtitle: 1.2rem;
+        --sh-fs-description: 0.95rem;
+
+        --sh-fs-author: 1.35rem;
+        --sh-fs-role: 1.05rem;
+
+        --sh-fs-chip: 0.9rem;
+        --sh-fs-metadata-title: 0.75rem;
+        --sh-fs-tag: 0.85rem;
+        --sh-fs-mechanism: 0.85rem;
+
+        padding: 1.25rem 1rem;
+    }
+
+
+    .site-header__brand {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+
+    .site-header__brand-text {
+        flex-basis: auto;
+        width: 100%;
+    }
+
+
+    .site-header__title-row {
+        align-items: baseline;
+    }
+
+
+    .site-header__badges {
+        align-items: flex-start;
+
+        width: 100%;
+
+        margin-left: 0;
+    }
+
+
+    .site-header__pill--accent {
+        width: 17rem;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+
+    .site-header__author-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+
+    .site-header__links {
+        justify-content: flex-start;
+
+        margin-left: 0;
+    }
+
+
+    .site-header__metadata {
+        grid-template-columns: 1fr;
+
+        gap: 1rem;
+    }
+
+
+    .site-header__metadata-group--mechanisms {
+        align-items: flex-start;
+
+        text-align: left;
+    }
+
+
+    .site-header__mechanisms {
+        justify-content: flex-start;
+    }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+
+    .site-header__pill {
+        transition: none;
+    }
+}
