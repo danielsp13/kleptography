@@ -61,7 +61,7 @@ def build_home_content() -> str:
                 "A. L. Young and M. Yung, "
                 '"Kleptography: Using Cryptography Against Cryptography," '
                 "in Advances in Cryptology — EUROCRYPT '97, "
-                "LNCS 1233, pp. 62–74, Springer, 1997."
+                "LNCS 1233, pp. 62-74, Springer, 1997."
             ),
             title="Reference",
         )
