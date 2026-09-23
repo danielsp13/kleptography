@@ -56,19 +56,21 @@ class DiffieHellmanParticipant:
             self.parameters.prime,
         )
 
-    def compute_shared_secret(self, peer_public_key: int) -> int:
+    def compute_shared_secret(self, peer_public_key: int | None) -> int:
         """
         Compute the shared DH secret from a peer's public value.
 
         Raises
         ------
         DiffieHellmanStateError
-            If no key pair has been generated.
-        InvalidPublicKey
-            If the peer's public value is invalid or does not belong
-            to the expected subgroup.
+            If no key pair has been generated or the peer public key
+            is missing.
         """
-        if self.private_key is None:
+        if peer_public_key is None:
+            raise DiffieHellmanStateError("Public Key from other participant is None.")
+
+        private_key = self.private_key
+        if private_key is None:
             raise DiffieHellmanStateError(
                 "Key pair has not been generated. Call generate_keypair() first."
             )
@@ -81,6 +83,6 @@ class DiffieHellmanParticipant:
 
         return mod_pow(
             peer_public_key,
-            self.private_key,
+            private_key,
             self.parameters.prime,
         )
