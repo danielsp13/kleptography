@@ -1,3 +1,6 @@
+import pytest
+
+from kleptography.app.content.callouts import CalloutComposer
 from kleptography.app.content.composer import ContentComposer
 
 
@@ -7,56 +10,260 @@ def test_empty_composer() -> None:
     assert composer.build() == ""
 
 
-def test_h1() -> None:
+@pytest.mark.parametrize(
+    ("method", "text", "expected"),
+    [
+        ("h1", "Title", "# Title"),
+        ("h2", "Section", "## Section"),
+        ("h3", "Subsection", "### Subsection"),
+    ],
+)
+def test_headings(method: str, text: str, expected: str) -> None:
     composer = ContentComposer()
 
-    composer.h1("Title")
+    result = getattr(composer, method)(text)
 
-    assert composer.build() == "# Title"
-
-
-def test_h2() -> None:
-    composer = ContentComposer()
-
-    composer.h2("Section")
-
-    assert composer.build() == "## Section"
-
-
-def test_h3() -> None:
-    composer = ContentComposer()
-
-    composer.h3("Subsection")
-
-    assert composer.build() == "### Subsection"
+    assert result is composer
+    assert composer.build() == expected
 
 
 def test_paragraph() -> None:
     composer = ContentComposer()
 
-    composer.paragraph("A paragraph.")
+    result = composer.paragraph("A paragraph.")
 
+    assert result is composer
     assert composer.build() == "A paragraph."
 
 
 def test_paragraph_with_multiple_parts() -> None:
     composer = ContentComposer()
 
-    composer.paragraph("Hello, ", "world", "!")
+    result = composer.paragraph("Hello, ", "world", "!")
 
+    assert result is composer
     assert composer.build() == "Hello, world!"
 
 
-def test_bold() -> None:
-    assert ContentComposer.bold("important") == "**important**"
+def test_paragraph_with_no_parts() -> None:
+    composer = ContentComposer()
+
+    result = composer.paragraph()
+
+    assert result is composer
+    assert composer.build() == ""
 
 
-def test_italic() -> None:
-    assert ContentComposer.italic("emphasis") == "*emphasis*"
+def test_divider() -> None:
+    composer = ContentComposer()
+
+    result = composer.divider()
+
+    assert result is composer
+    assert composer.build() == "---"
 
 
-def test_code() -> None:
-    assert ContentComposer.code("mod_pow") == "`mod_pow`"
+def test_bullet_list() -> None:
+    composer = ContentComposer()
+
+    result = composer.bullet_list(
+        [
+            "First item",
+            "Second item",
+            "Third item",
+        ]
+    )
+
+    assert result is composer
+    assert composer.build() == ("- First item\n- Second item\n- Third item")
+
+
+def test_empty_bullet_list() -> None:
+    composer = ContentComposer()
+
+    result = composer.bullet_list([])
+
+    assert result is composer
+    assert composer.build() == ""
+
+
+def test_bullet_list_with_empty_items() -> None:
+    composer = ContentComposer()
+
+    composer.bullet_list(["", "Item", ""])
+
+    assert composer.build() == "- \n- Item\n- "
+
+
+def test_ordered_list() -> None:
+    composer = ContentComposer()
+
+    result = composer.ordered_list(
+        [
+            "First item",
+            "Second item",
+            "Third item",
+        ]
+    )
+
+    assert result is composer
+    assert composer.build() == ("1. First item\n2. Second item\n3. Third item")
+
+
+def test_empty_ordered_list() -> None:
+    composer = ContentComposer()
+
+    result = composer.ordered_list([])
+
+    assert result is composer
+    assert composer.build() == ""
+
+
+def test_ordered_list_numbers_items_from_one() -> None:
+    composer = ContentComposer()
+
+    composer.ordered_list(["A", "B", "C", "D"])
+
+    assert composer.build() == ("1. A\n2. B\n3. C\n4. D")
+
+
+def test_quote() -> None:
+    composer = ContentComposer()
+
+    result = composer.quote("A quoted sentence.")
+
+    assert result is composer
+    assert composer.build() == "> A quoted sentence."
+
+
+def test_quote_with_multiple_parts() -> None:
+    composer = ContentComposer()
+
+    result = composer.quote("Hello, ", "world", "!")
+
+    assert result is composer
+    assert composer.build() == "> Hello, world!"
+
+
+def test_quote_with_no_parts() -> None:
+    composer = ContentComposer()
+
+    result = composer.quote()
+
+    assert result is composer
+    assert composer.build() == "> "
+
+
+def test_image() -> None:
+    composer = ContentComposer()
+
+    result = composer.image(
+        "docs/images/kleptofox.png",
+        alt="Kleptography mascot",
+    )
+
+    assert result is composer
+    assert composer.build() == ("![Kleptography mascot](docs/images/kleptofox.png)")
+
+
+def test_image_without_alt_text() -> None:
+    composer = ContentComposer()
+
+    result = composer.image("docs/images/kleptofox.png")
+
+    assert result is composer
+    assert composer.build() == "![](docs/images/kleptofox.png)"
+
+
+def test_image_with_empty_alt_text() -> None:
+    composer = ContentComposer()
+
+    composer.image("image.png", alt="")
+
+    assert composer.build() == "![](image.png)"
+
+
+def test_block_with_string() -> None:
+    composer = ContentComposer()
+
+    result = composer.block("Some Markdown content.")
+
+    assert result is composer
+    assert composer.build() == "Some Markdown content."
+
+
+def test_block_with_callout_composer() -> None:
+    composer = ContentComposer()
+    callout = CalloutComposer.note("Some note.")
+
+    result = composer.block(callout)
+
+    assert result is composer
+    assert composer.build() == callout.build()
+
+
+def test_block_with_callout_uses_build_result() -> None:
+    composer = ContentComposer()
+    callout = CalloutComposer.warning(
+        "Warning content",
+        title="Custom warning",
+    )
+
+    composer.block(callout)
+
+    assert composer.build() == (
+        '<div class="callout callout-warning">'
+        '<div class="callout-title">Custom warning</div>'
+        '<div class="callout-content">Warning content</div>'
+        "</div>"
+    )
+
+
+@pytest.mark.parametrize(
+    ("method", "text", "expected"),
+    [
+        ("bold", "important", "**important**"),
+        ("italic", "emphasis", "*emphasis*"),
+        ("code", "mod_pow", "`mod_pow`"),
+    ],
+)
+def test_inline_formatting(method: str, text: str, expected: str) -> None:
+    composer = ContentComposer()
+
+    result = getattr(composer, method)(text)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("method", "text"),
+    [
+        ("bold", ""),
+        ("italic", ""),
+        ("code", ""),
+    ],
+)
+def test_inline_formatting_with_empty_text(method: str, text: str) -> None:
+    assert getattr(ContentComposer, method)(text) in {"****", "**", "``"}
+
+
+def test_inline_formatting_with_special_characters() -> None:
+    assert ContentComposer.bold("a * b") == "**a * b**"
+    assert ContentComposer.italic("a * b") == "*a * b*"
+    assert ContentComposer.code("a ` b") == "`a ` b`"
+
+
+def test_inline_formatting_does_not_modify_composer() -> None:
+    composer = ContentComposer()
+
+    bold = composer.bold("important")
+    italic = composer.italic("educational")
+    code = composer.code("mod_pow")
+
+    assert composer.build() == ""
+    assert bold == "**important**"
+    assert italic == "*educational*"
+    assert code == "`mod_pow`"
 
 
 def test_blocks_are_separated_by_blank_lines() -> None:
@@ -89,111 +296,7 @@ def test_inline_formatting_can_be_composed() -> None:
         ".",
     )
 
-    assert composer.build() == ("This is **important** and *educational*.")
-
-
-def test_inline_formatting_does_not_modify_composer() -> None:
-    composer = ContentComposer()
-
-    bold = composer.bold("important")
-    italic = composer.italic("educational")
-    code = composer.code("mod_pow")
-
-    assert composer.build() == ""
-    assert bold == "**important**"
-    assert italic == "*educational*"
-    assert code == "`mod_pow`"
-
-
-def test_divider() -> None:
-    composer = ContentComposer()
-
-    composer.divider()
-
-    assert composer.build() == "---"
-
-
-def test_bullet_list() -> None:
-    composer = ContentComposer()
-
-    composer.bullet_list(
-        [
-            "First item",
-            "Second item",
-            "Third item",
-        ]
-    )
-
-    assert composer.build() == ("- First item\n- Second item\n- Third item")
-
-
-def test_ordered_list() -> None:
-    composer = ContentComposer()
-
-    composer.ordered_list(
-        [
-            "First item",
-            "Second item",
-            "Third item",
-        ]
-    )
-
-    assert composer.build() == ("1. First item\n2. Second item\n3. Third item")
-
-
-def test_empty_bullet_list() -> None:
-    composer = ContentComposer()
-
-    composer.bullet_list([])
-
-    assert composer.build() == ""
-
-
-def test_empty_ordered_list() -> None:
-    composer = ContentComposer()
-
-    composer.ordered_list([])
-
-    assert composer.build() == ""
-
-
-def test_quote() -> None:
-    composer = ContentComposer()
-
-    composer.quote("A quoted sentence.")
-
-    assert composer.build() == "> A quoted sentence."
-
-
-def test_quote_with_inline_formatting() -> None:
-    composer = ContentComposer()
-
-    composer.quote(
-        "This is ",
-        composer.bold("important"),
-        ".",
-    )
-
-    assert composer.build() == "> This is **important**."
-
-
-def test_image() -> None:
-    composer = ContentComposer()
-
-    composer.image(
-        "docs/images/kleptofox.png",
-        alt="Kleptography mascot",
-    )
-
-    assert composer.build() == ("![Kleptography mascot](docs/images/kleptofox.png)")
-
-
-def test_image_without_alt_text() -> None:
-    composer = ContentComposer()
-
-    composer.image("docs/images/kleptofox.png")
-
-    assert composer.build() == "![](docs/images/kleptofox.png)"
+    assert composer.build() == "This is **important** and *educational*."
 
 
 def test_all_block_operations_can_be_composed() -> None:
@@ -219,3 +322,51 @@ def test_all_block_operations_can_be_composed() -> None:
         "> A quote.\n\n"
         "![An image](image.png)"
     )
+
+
+def test_multiple_blocks_are_kept_in_insertion_order() -> None:
+    composer = ContentComposer()
+
+    composer.block("first")
+    composer.block("second")
+    composer.block("third")
+
+    assert composer.build() == "first\n\nsecond\n\nthird"
+
+
+def test_build_does_not_clear_blocks() -> None:
+    composer = ContentComposer()
+
+    composer.h1("Title")
+
+    first = composer.build()
+    second = composer.build()
+
+    assert first == "# Title"
+    assert second == "# Title"
+
+
+def test_build_reflects_blocks_added_after_previous_build() -> None:
+    composer = ContentComposer()
+
+    composer.h1("Title")
+    assert composer.build() == "# Title"
+
+    composer.paragraph("Text.")
+
+    assert composer.build() == "# Title\n\nText."
+
+
+def test_empty_string_block_is_preserved() -> None:
+    composer = ContentComposer()
+
+    composer.block("")
+    composer.block("content")
+
+    assert composer.build() == "\n\ncontent"
+
+
+def test_content_composer_initializes_empty_blocks() -> None:
+    composer = ContentComposer()
+
+    assert composer._blocks == []
