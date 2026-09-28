@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from src.kleptography.crypto.dh.exchange import DiffieHellmanExchangeResult
-from src.kleptography.crypto.dh.participant import DiffieHellmanParticipant
-from src.kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
-from src.kleptography.crypto.dh.tracing.observer import OperationObserver
+from kleptography.crypto.dh.exchange import DiffieHellmanExchangeResult
+from kleptography.crypto.dh.participant import DiffieHellmanParticipant
+from kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
+from kleptography.crypto.dh.tracing.observer import OperationObserver
 
 
 def perform_key_exchange(

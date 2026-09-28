@@ -2,12 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.kleptography.crypto.dh.exchange import DiffieHellmanExchangeResult
-from src.kleptography.crypto.dh.parameters import DiffieHellmanParameters
-from src.kleptography.crypto.dh.participant import DiffieHellmanParticipant
-from src.kleptography.crypto.dh.protocol import perform_key_exchange
-from src.kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
-from src.kleptography.crypto.dh.tracing.events import (
+from kleptography.crypto.dh.exchange import DiffieHellmanExchangeResult
+from kleptography.crypto.dh.parameters import DiffieHellmanParameters
+from kleptography.crypto.dh.participant import DiffieHellmanParticipant
+from kleptography.crypto.dh.protocol import perform_key_exchange
+from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
+from kleptography.crypto.dh.tracing.events import (
     Actor,
     ProtocolEventType,
 )

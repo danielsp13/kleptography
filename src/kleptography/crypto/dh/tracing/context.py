@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping
 
-from src.kleptography.crypto.dh.tracing.events import (
+from kleptography.crypto.dh.tracing.events import (
     Actor,
     ProtocolEvent,
     ProtocolEventType,
 )
-from src.kleptography.crypto.dh.tracing.observer import OperationObserver
+from kleptography.crypto.dh.tracing.observer import OperationObserver
 
 
 @dataclass(slots=True)

@@ -1,6 +1,6 @@
 import pytest
 
-from src.kleptography.app.content.callouts import CalloutComposer
+from kleptography.app.content.callouts import CalloutComposer
 
 
 def test_types_contains_all_supported_callout_types():

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Mapping
 
-from src.kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
+from kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
 
 
 class OperationObserver(ABC):

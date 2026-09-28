@@ -1,11 +1,11 @@
 from types import MappingProxyType
 
-from src.kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
-from src.kleptography.crypto.dh.tracing.events import (
+from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
+from kleptography.crypto.dh.tracing.events import (
     Actor,
     ProtocolEventType,
 )
-from src.kleptography.crypto.dh.tracing.observer import OperationObserver
+from kleptography.crypto.dh.tracing.observer import OperationObserver
 
 
 def test_context_implements_operation_observer() -> None:

@@ -3,7 +3,7 @@ from typing import cast
 
 import pytest
 
-from src.kleptography.crypto.dh.tracing.events import (
+from kleptography.crypto.dh.tracing.events import (
     Actor,
     ProtocolEvent,
     ProtocolEventType,

@@ -4,8 +4,8 @@ from typing import Mapping
 
 import pytest
 
-from src.kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
-from src.kleptography.crypto.dh.tracing.observer import OperationObserver
+from kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
+from kleptography.crypto.dh.tracing.observer import OperationObserver
 
 
 class TestObserver(OperationObserver):

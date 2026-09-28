@@ -1,5 +1,5 @@
-from src.kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
-from src.kleptography.crypto.dh.tracing.events import (
+from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
+from kleptography.crypto.dh.tracing.events import (
     Actor,
     ProtocolEvent,
     ProtocolEventType,
