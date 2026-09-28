@@ -47,6 +47,10 @@ class ContentComposer:
         self._blocks.append(f"![{alt}]({src})")
         return self
 
+    def formula(self, latex: str) -> ContentComposer:
+        self._blocks.append(f"$$\n{latex}\n$$")
+        return self
+
     def block(self, content: str | CalloutComposer) -> ContentComposer:
         self._blocks.append(content if isinstance(content, str) else content.build())
         return self
@@ -62,6 +66,10 @@ class ContentComposer:
     @staticmethod
     def code(text: str) -> str:
         return f"`{text}`"
+
+    @staticmethod
+    def math(latex: str) -> str:
+        return f"${latex}$"
 
     def build(self) -> str:
         return "\n\n".join(self._blocks)

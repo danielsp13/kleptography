@@ -219,12 +219,31 @@ def test_block_with_callout_uses_build_result() -> None:
     )
 
 
+def test_formula() -> None:
+    composer = ContentComposer()
+
+    result = composer.formula(r"A = g^{a} \bmod p")
+
+    assert result is composer
+    assert composer.build() == "$$\nA = g^{a} \\bmod p\n$$"
+
+
+def test_formula_preserves_multiline_latex() -> None:
+    composer = ContentComposer()
+    latex = r"\begin{aligned}a &= b \\ c &= d\end{aligned}"
+
+    composer.formula(latex)
+
+    assert composer.build() == f"$$\n{latex}\n$$"
+
+
 @pytest.mark.parametrize(
     ("method", "text", "expected"),
     [
         ("bold", "important", "**important**"),
         ("italic", "emphasis", "*emphasis*"),
         ("code", "mod_pow", "`mod_pow`"),
+        ("math", "g^{a}", "$g^{a}$"),
     ],
 )
 def test_inline_formatting(method: str, text: str, expected: str) -> None:
@@ -241,16 +260,18 @@ def test_inline_formatting(method: str, text: str, expected: str) -> None:
         ("bold", ""),
         ("italic", ""),
         ("code", ""),
+        ("math", ""),
     ],
 )
 def test_inline_formatting_with_empty_text(method: str, text: str) -> None:
-    assert getattr(ContentComposer, method)(text) in {"****", "**", "``"}
+    assert getattr(ContentComposer, method)(text) in {"****", "**", "``", "$$"}
 
 
 def test_inline_formatting_with_special_characters() -> None:
     assert ContentComposer.bold("a * b") == "**a * b**"
     assert ContentComposer.italic("a * b") == "*a * b*"
     assert ContentComposer.code("a ` b") == "`a ` b`"
+    assert ContentComposer.math(r"\frac{a}{b}") == r"$\frac{a}{b}$"
 
 
 def test_inline_formatting_does_not_modify_composer() -> None:
@@ -259,11 +280,13 @@ def test_inline_formatting_does_not_modify_composer() -> None:
     bold = composer.bold("important")
     italic = composer.italic("educational")
     code = composer.code("mod_pow")
+    math = composer.math("g^{a}")
 
     assert composer.build() == ""
     assert bold == "**important**"
     assert italic == "*educational*"
     assert code == "`mod_pow`"
+    assert math == "$g^{a}$"
 
 
 def test_blocks_are_separated_by_blank_lines() -> None:
@@ -293,10 +316,14 @@ def test_inline_formatting_can_be_composed() -> None:
         composer.bold("important"),
         " and ",
         composer.italic("educational"),
+        ", with ",
+        composer.math("A = g^{a}"),
         ".",
     )
 
-    assert composer.build() == "This is **important** and *educational*."
+    assert composer.build() == (
+        "This is **important** and *educational*, with $A = g^{a}$."
+    )
 
 
 def test_all_block_operations_can_be_composed() -> None:
@@ -309,6 +336,7 @@ def test_all_block_operations_can_be_composed() -> None:
         .ordered_list(["First", "Second"])
         .quote("A quote.")
         .image("image.png", alt="An image")
+        .formula("p = 2q + 1")
     )
 
     assert composer.build() == (
@@ -320,7 +348,8 @@ def test_all_block_operations_can_be_composed() -> None:
         "1. First\n"
         "2. Second\n\n"
         "> A quote.\n\n"
-        "![An image](image.png)"
+        "![An image](image.png)\n\n"
+        "$$\np = 2q + 1\n$$"
     )
 
 
