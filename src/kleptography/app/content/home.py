@@ -158,7 +158,8 @@ def build_home_content() -> str:
 
     content.paragraph(
         content.bold("Implementation status:"),
-        " the Diffie-Hellman case study has not yet been implemented.",
+        " the honest Diffie-Hellman exchange is available as an interactive "
+        "section; the kleptographic construction has not been implemented yet.",
     )
 
     content.divider()

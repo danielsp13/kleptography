@@ -1,0 +1,26 @@
+/* ============================================================
+   Interactive protocol sections
+   ============================================================ */
+
+/* Cryptographic values can have thousands of digits: wrap them inside
+   their code block instead of scrolling horizontally. Lines break only at
+   the spaces between digit groups, so groups stay aligned in columns; a
+   single group is split only if it cannot fit on a line at all. */
+[data-testid="stCode"] pre,
+[data-testid="stCode"] code {
+    white-space: pre-wrap !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+}
+
+[data-testid="stCode"] pre {
+    overflow-x: hidden !important;
+}
+
+/* Long display formulas scroll on their own on narrow screens instead of
+   widening the page. */
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-block: 0.25rem;
+}

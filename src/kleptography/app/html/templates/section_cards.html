@@ -1,0 +1,27 @@
+<nav class="section-cards" aria-label="Interactive sections">
+{%- for card in cards %}
+  {%- if card.href %}
+  <a class="section-card" href="{{ card.href }}">
+  {%- else %}
+  <div class="section-card section-card--disabled" aria-disabled="true">
+  {%- endif %}
+
+    <div class="section-card__header">
+      <h3 class="section-card__title">{{ card.title }}</h3>
+      <span class="section-card__status {{ 'section-card__status--available' if card.href else 'section-card__status--pending' }}">{{ card.status }}</span>
+    </div>
+
+    <p class="section-card__description">{{ card.description }}</p>
+
+    <span class="section-card__action">
+      {{- 'Open section' if card.href else 'Coming soon' -}}
+      {%- if card.href %}<span class="section-card__arrow" aria-hidden="true">→</span>{% endif -%}
+    </span>
+
+  {%- if card.href %}
+  </a>
+  {%- else %}
+  </div>
+  {%- endif %}
+{%- endfor %}
+</nav>

@@ -1,6 +1,6 @@
 import streamlit as st
 
-from kleptography.app.pages.home import render_page_home
+from kleptography.app.navigation import all_pages
 
 
 def main() -> None:
@@ -10,7 +10,7 @@ def main() -> None:
         layout="wide",
     )
 
-    render_page_home()
+    st.navigation(all_pages(), position="hidden").run()
 
 
 if __name__ == "__main__":
