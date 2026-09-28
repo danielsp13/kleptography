@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from kleptography.crypto.dh.exceptions import DiffieHellmanParametersMismatch
 from kleptography.crypto.dh.exchange import DiffieHellmanExchangeResult
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.participant import DiffieHellmanParticipant
@@ -29,11 +30,8 @@ def participants(
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(parameters)
 
-    alice.private_key = 6
-    alice.public_key = pow(parameters.generator, alice.private_key, parameters.prime)
-
-    bob.private_key = 7
-    bob.public_key = pow(parameters.generator, bob.private_key, parameters.prime)
+    alice.load_private_key(6)
+    bob.load_private_key(7)
 
     return alice, bob
 
@@ -139,9 +137,9 @@ def test_protocol_emits_complete_high_level_timeline(
     assert event_types == [
         ProtocolEventType.PARAMETERS_SELECTED,
         ProtocolEventType.PARAMETERS_VALIDATED,
-        ProtocolEventType.PRIVATE_KEY_GENERATED,
+        ProtocolEventType.PRIVATE_KEY_PROVIDED,
         ProtocolEventType.PUBLIC_KEY_COMPUTED,
-        ProtocolEventType.PRIVATE_KEY_GENERATED,
+        ProtocolEventType.PRIVATE_KEY_PROVIDED,
         ProtocolEventType.PUBLIC_KEY_COMPUTED,
         ProtocolEventType.PUBLIC_KEY_SENT,
         ProtocolEventType.PUBLIC_KEY_RECEIVED,
@@ -380,3 +378,152 @@ def test_protocol_does_not_depend_on_protocol_execution_context(
 
     assert calls[0].args[0] is ProtocolEventType.PARAMETERS_SELECTED
     assert calls[-1].args[0] is ProtocolEventType.SHARED_SECRET_VERIFIED
+
+
+def test_protocol_preserves_provided_keypairs(
+    participants: tuple[
+        DiffieHellmanParticipant,
+        DiffieHellmanParticipant,
+    ],
+) -> None:
+    alice, bob = participants
+
+    result = perform_key_exchange(alice, bob)
+
+    assert alice.private_key == 6
+    assert alice.public_key == 18
+    assert bob.private_key == 7
+    assert bob.public_key == 13
+    assert result.alice_shared_secret == 6
+    assert result.bob_shared_secret == 6
+
+
+def test_protocol_is_reproducible_with_provided_keypairs(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    timelines = []
+
+    for _ in range(2):
+        alice = DiffieHellmanParticipant(parameters)
+        bob = DiffieHellmanParticipant(parameters)
+        alice.load_private_key(6)
+        bob.load_private_key(7)
+        observer = ProtocolExecutionContext()
+
+        perform_key_exchange(alice, bob, observer=observer)
+
+        timelines.append(observer.events)
+
+    assert timelines[0] == timelines[1]
+
+
+def test_protocol_generates_keypairs_for_participants_without_one(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    alice = DiffieHellmanParticipant(parameters)
+    bob = DiffieHellmanParticipant(parameters)
+    observer = ProtocolExecutionContext()
+
+    result = perform_key_exchange(alice, bob, observer=observer)
+
+    key_events = [
+        event
+        for event in observer.events
+        if event.event_type is ProtocolEventType.PRIVATE_KEY_GENERATED
+    ]
+
+    assert [event.actor for event in key_events] == [Actor.ALICE, Actor.BOB]
+    assert key_events[0].data["private_key"] == alice.private_key
+    assert key_events[1].data["private_key"] == bob.private_key
+    assert result.successful is True
+
+
+def test_protocol_mixes_provided_and_generated_keypairs(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    alice = DiffieHellmanParticipant(parameters)
+    bob = DiffieHellmanParticipant(parameters)
+    alice.load_private_key(6)
+    observer = ProtocolExecutionContext()
+
+    result = perform_key_exchange(alice, bob, observer=observer)
+
+    assert observer.events[2].event_type is ProtocolEventType.PRIVATE_KEY_PROVIDED
+    assert observer.events[2].actor is Actor.ALICE
+    assert observer.events[4].event_type is ProtocolEventType.PRIVATE_KEY_GENERATED
+    assert observer.events[4].actor is Actor.BOB
+    assert alice.private_key == 6
+    assert result.successful is True
+
+
+def test_protocol_reuses_keypairs_across_exchanges(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    alice = DiffieHellmanParticipant(parameters)
+    bob = DiffieHellmanParticipant(parameters)
+
+    first = perform_key_exchange(alice, bob)
+    alice_private_key = alice.private_key
+    bob_private_key = bob.private_key
+
+    second = perform_key_exchange(alice, bob)
+
+    assert alice.private_key == alice_private_key
+    assert bob.private_key == bob_private_key
+    assert first == second
+
+
+def test_protocol_records_public_key_derivation(
+    participants: tuple[
+        DiffieHellmanParticipant,
+        DiffieHellmanParticipant,
+    ],
+) -> None:
+    alice, bob = participants
+    observer = ProtocolExecutionContext()
+
+    perform_key_exchange(alice, bob, observer=observer)
+
+    alice_public = observer.events[3]
+
+    assert alice_public.event_type is ProtocolEventType.PUBLIC_KEY_COMPUTED
+    assert dict(alice_public.data) == {
+        "base": 2,
+        "exponent": 6,
+        "modulus": 23,
+        "public_key": 18,
+        "expression": "2^6 mod 23",
+    }
+
+
+def test_protocol_rejects_mismatched_parameters(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    other_parameters = DiffieHellmanParameters(
+        prime=47,
+        generator=2,
+        subgroup_order=23,
+    )
+    alice = DiffieHellmanParticipant(parameters)
+    bob = DiffieHellmanParticipant(other_parameters)
+    observer = ProtocolExecutionContext()
+
+    with pytest.raises(DiffieHellmanParametersMismatch):
+        perform_key_exchange(alice, bob, observer=observer)
+
+    assert observer.events == ()
+    assert alice.has_keypair is False
+    assert bob.has_keypair is False
+
+
+def test_protocol_accepts_equal_but_distinct_parameter_objects(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    alice = DiffieHellmanParticipant(parameters)
+    bob = DiffieHellmanParticipant(
+        DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
+    )
+
+    result = perform_key_exchange(alice, bob)
+
+    assert result.successful is True

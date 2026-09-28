@@ -21,6 +21,7 @@ class ProtocolEventType(StrEnum):
     PARAMETERS_VALIDATED = "parameters_validated"
 
     PRIVATE_KEY_GENERATED = "private_key_generated"
+    PRIVATE_KEY_PROVIDED = "private_key_provided"
     PUBLIC_KEY_COMPUTED = "public_key_computed"
 
     PUBLIC_KEY_SENT = "public_key_sent"

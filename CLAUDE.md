@@ -77,7 +77,7 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | --- | --- |
 | Math utilities (`math/`) | Done, fully tested. |
 | DH parameters, validation, RFC 7919 groups | Done (issue #8). |
-| Honest DH participant and protocol | Done (issue #8). |
+| Honest DH participant and protocol | Done (issue #8). Five-phase execution model; supports known (loaded) and generated keys. |
 | Protocol tracing (observer + event timeline) | Done, last feature added. Not consumed by the UI yet. |
 | Streamlit shell: header, footer, home page, content composer | Done (issues #9, #10). |
 | DH case-study page in the UI | **Not started.** The home page says "has not yet been implemented". |
@@ -99,7 +99,7 @@ Every case study follows the same page progression: mathematical background
 (both constructions under comparable conditions) → observation (what each
 participant can see) → analysis.
 
-Test suite: 290 tests. Coverage is about 85% overall; `crypto/` and `math/`
+Test suite: 312 tests. Coverage is about 86% overall; `crypto/` and `math/`
 are at about 100%, and the untested remainder is Streamlit rendering
 (`pages/`, `components/`, `content/home.py`, `main.py`).
 
@@ -179,14 +179,21 @@ tracing.context ── tracing.{events,observer}   (tracing never imports DH mod
 - **Validation** raises `InvalidDiffieHellmanParameters`,
   `InvalidPrivateKey` (unless `1 <= x < q`) or `InvalidPublicKey` (unless
   `1 < y < p` and `y^q ≡ 1`, a subgroup membership check).
-- **Exceptions**: `DiffieHellmanError` is the base. `Invalid*` also
-  subclass `ValueError`, and `DiffieHellmanStateError` also subclasses
-  `RuntimeError`.
-- **`DiffieHellmanParticipant(parameters)`** is a mutable, slotted
-  dataclass. `private_key` and `public_key` start as `None`, and
-  `private_key` is excluded from `repr`.
-  - `generate_keypair()` sets `x = secrets.randbelow(q-1) + 1` and
-    `y = g^x mod p`.
+- **Exceptions**: `DiffieHellmanError` is the base. `Invalid*` and
+  `DiffieHellmanParametersMismatch` also subclass `ValueError`, and
+  `DiffieHellmanStateError` also subclasses `RuntimeError`.
+- **`DiffieHellmanParticipant(parameters)`** is a slotted dataclass whose
+  key pair is stored in `_private_key` / `_public_key` and exposed through
+  **read-only** properties `private_key`, `public_key` (both `None` until
+  set) and `has_keypair`. `_private_key` is excluded from `repr`. The key
+  pair can only change through the two methods below, and both derive the
+  public value from the exponent, so the invariant `public_key == g^x mod p`
+  always holds. Never assign key material directly.
+  - `generate_keypair()` sets a fresh `x = secrets.randbelow(q-1) + 1` and
+    `y = g^x mod p`, replacing any previous pair.
+  - `load_private_key(x)` validates `x` (`InvalidPrivateKey` unless
+    `1 <= x < q`) and sets `(x, g^x mod p)`, replacing any previous pair.
+    Use it for reproducible demos and deterministic tests.
   - `compute_shared_secret(peer_public_key)` raises
     `DiffieHellmanStateError` if the peer key or its own key pair is
     missing, validates the peer key, and returns `peer^x mod p`.
@@ -196,10 +203,27 @@ tracing.context ── tracing.{events,observer}   (tracing never imports DH mod
     (principle 2).
 - **`DiffieHellmanExchangeResult(alice_shared_secret, bob_shared_secret)`**
   is frozen. `.successful` returns whether both secrets are equal.
-- **`perform_key_exchange(alice, bob, *, observer=None)`** runs the whole
-  exchange. It **always calls `generate_keypair()` on both participants**,
-  so keys assigned beforehand are overwritten. It does not check that both
-  participants share the same parameters.
+- **`perform_key_exchange(alice, bob, *, observer=None)`** runs the
+  exchange in five explicit phases, each implemented as a private helper in
+  `protocol.py`:
+  1. `_agree_parameters`: raises `DiffieHellmanParametersMismatch` if
+     `alice.parameters != bob.parameters` (value equality, so distinct but
+     equal objects are accepted). On failure nothing is generated or traced.
+  2. `_prepare_keypair` (Alice, then Bob): a participant that already
+     `has_keypair` keeps it (**provided key**); otherwise
+     `generate_keypair()` is called (**generated key**).
+  3. `_send_public_key` (Alice→Bob, then Bob→Alice).
+  4. `_compute_shared_secret` (Alice, then Bob), which validates the peer's
+     public value.
+  5. Verification: builds the `DiffieHellmanExchangeResult` and emits
+     `SHARED_SECRET_VERIFIED`.
+
+  Key pairs stay on the participants after the exchange, so running a
+  second exchange with the same participants reuses the same keys (static
+  DH). For fresh ephemeral keys, use new participants or call
+  `generate_keypair()` first; that key is then traced as provided. Events
+  are forwarded through `_emit(observer, ...)`, which does nothing when
+  `observer` is `None`.
 - **RFC 7919 groups**: `ffdhe2048()`, `ffdhe3072()`, `ffdhe4096()`,
   `ffdhe6144()` and `ffdhe8192()` are functions (not constants) that return
   `DiffieHellmanParameters.from_standard(...)` built from the hex constants
@@ -223,14 +247,19 @@ tracing.context ── tracing.{events,observer}   (tracing never imports DH mod
   snapshot.
 - Timeline emitted by `perform_key_exchange` when an observer is given (13
   events): `PARAMETERS_SELECTED`, `PARAMETERS_VALIDATED` (SYSTEM) →
-  `PRIVATE_KEY_GENERATED`, `PUBLIC_KEY_COMPUTED` (ALICE, then BOB) →
+  `PRIVATE_KEY_GENERATED` **or** `PRIVATE_KEY_PROVIDED`,
+  `PUBLIC_KEY_COMPUTED` (ALICE, then BOB) →
   `PUBLIC_KEY_SENT` / `PUBLIC_KEY_RECEIVED` (ALICE→BOB, then BOB→ALICE) →
   `SHARED_SECRET_COMPUTED` (ALICE, BOB) → `SHARED_SECRET_VERIFIED`
   (SYSTEM).
 - `PUBLIC_KEY_COMPUTED` and `SHARED_SECRET_COMPUTED` carry an `expression`
-  string such as `"2^6 mod 23"`. `PARAMETERS_VALIDATED` does not
-  re-validate anything; validation already happened when the
-  `DiffieHellmanParameters` were constructed.
+  string such as `"2^6 mod 23"`. `PARAMETERS_VALIDATED` means that both
+  participants use the same group. The group's own invariants were already
+  validated when the `DiffieHellmanParameters` were constructed.
+- `PRIVATE_KEY_PROVIDED` vs `PRIVATE_KEY_GENERATED` records whether the
+  exponent existed before the exchange started or was sampled during it.
+  This matters for the SETUP work, where a compromised device chooses
+  exponents that look like freshly generated ones.
 - Events deliberately include private values, because showing them is the
   educational goal. Keep events presentation-agnostic: raw values only, no
   HTML or formatting. The UI is expected to render a DH walkthrough from
@@ -299,12 +328,6 @@ the UI, including the fact that their outputs are indistinguishable.
 Only fix these when the task asks for it, or when you are already editing
 the affected code.
 
-- `perform_key_exchange` always regenerates key pairs, so it cannot replay
-  deterministic keys. The fixtures in `tests/crypto/dh/test_protocol.py`
-  that pre-assign keys 6 and 7 are overwritten; those tests only assert
-  internal consistency.
-- `perform_key_exchange` does not check that Alice and Bob use the same
-  parameters.
 - The UI version `"1.0.0"` differs from `pyproject.toml` `0.1.0`, and the
   footer's documentation and license URLs point to the GitHub profile, not
   the repository.
@@ -312,7 +335,7 @@ the affected code.
   with `"demonstrating..."` without a space.
 - Docstring style is mixed: Google style in `math/`, NumPy style in
   `crypto/dh/validation.py` and `participant.py`, and some modules
-  (`protocol.py`, `tracing/*`, `app/*`) have no module docstring.
+  (`tracing/*`, `app/*`) have no module docstring.
 
 ## 6. Code conventions
 
@@ -346,8 +369,9 @@ the affected code.
 - Mirror the source tree: `src/kleptography/x/y.py` → `tests/x/test_y.py`.
   There is no `conftest.py`; fixtures are defined per module.
 - Keep tests deterministic. Use the toy group `p=23, g=2, q=11` as a
-  fixture. For participant-level tests, assign `private_key` / `public_key`
-  directly. Use `generate_toy()` only where randomness is the property under
+  fixture, and fix keys with `participant.load_private_key(x)`. Reference
+  values: `x_A=6 → y_A=18`, `x_B=7 → y_B=13`, shared secret `6`. A second
+  valid group for mismatch tests is `p=47, g=2, q=23`. Use `generate_toy()` only where randomness is the property under
   test, and assert invariants rather than values.
 - RFC group tests check primality of `p` and `q`, `g^q ≡ 1`, bit length,
   and the exact RFC constants.

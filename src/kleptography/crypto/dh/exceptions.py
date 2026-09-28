@@ -23,3 +23,7 @@ class InvalidPublicKey(DiffieHellmanError, ValueError):
 
 class DiffieHellmanStateError(DiffieHellmanError, RuntimeError):
     """Raised when a Diffie-Hellman operation is invalid for the current state."""
+
+
+class DiffieHellmanParametersMismatch(DiffieHellmanError, ValueError):
+    """Raised when participants do not share the same Diffie-Hellman parameters."""
