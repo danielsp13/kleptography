@@ -78,18 +78,20 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Math utilities (`math/`) | Done, fully tested. |
 | DH parameters, validation, RFC 7919 groups | Done (issue #8). |
 | Honest DH participant and protocol | Done (issue #8). Five-phase execution model; supports known (loaded) and generated keys. |
-| Protocol tracing (observer + event timeline) | Done, last feature added. Not consumed by the UI yet. |
-| Streamlit shell: header, footer, home page, content composer | Done (issues #9, #10). |
-| DH case-study page in the UI | **Not started.** The home page says "has not yet been implemented". |
+| Protocol tracing (observer + event timeline) | Done. Consumed by the Diffie-Hellman section. |
+| Streamlit shell: header, footer, home page, content composer | Done (issues #9, #10). Composer supports LaTeX. |
+| Hidden navigation (home ↔ sections, no sidebar) | Done. |
+| Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
+| Kleptographic DH section in the UI | Placeholder card on the home page ("In research", disabled). |
 | Young–Yung DH SETUP (kleptographic DH) | **Not started.** Needs a research issue first. |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
 
 1. Mathematical and implementation foundations. **(done)**
-2. Reference DH construction. **(done)**
+2. Reference DH construction. **(done)**, including its interactive section.
 3. Study and implement the Young–Yung construction.
-4. Interactive experiments around it.
+4. Interactive experiments around it, mirroring the honest DH section.
 5. Expose intermediate values and attacker knowledge.
 6. Document security assumptions and limitations.
 7. Apply the same methodology to other constructions.
@@ -99,9 +101,11 @@ Every case study follows the same page progression: mathematical background
 (both constructions under comparable conditions) → observation (what each
 participant can see) → analysis.
 
-Test suite: 312 tests. Coverage is about 86% overall; `crypto/` and `math/`
-are at about 100%, and the untested remainder is Streamlit rendering
-(`pages/`, `components/`, `content/home.py`, `main.py`).
+Test suite: 316 tests. `crypto/` and `math/` are at about 100% coverage. On
+the maintainer's request, the new UI modules (`navigation.py`,
+`components/navigation.py`, `components/protocol.py`,
+`content/diffie_hellman.py`, `content/numbers.py`, `pages/*`) **have no tests
+yet. Do not add page or component tests unless a task asks for them.**
 
 ## 4. Architecture and interrelations
 
@@ -121,12 +125,13 @@ src/kleptography/
 │       ├── tracing/         # events.py, observer.py, context.py
 │       └── groups/rfc7919/  # ffdhe2048() … ffdhe8192()
 └── app/                     # Streamlit presentation layer
-    ├── main.py              # entry point: page config + render_page_home()
-    ├── pages/home.py        # render_page_home()
-    ├── components/          # render_component_header(), render_component_footer()
-    ├── content/             # composer.py, callouts.py, home.py
+    ├── main.py              # entry point: page config + hidden st.navigation
+    ├── navigation.py        # page registry: home_page(), diffie_hellman_page(), all_pages()
+    ├── pages/               # home.py, diffie_hellman.py
+    ├── components/          # header, footer, navigation (back link, section card), protocol
+    ├── content/             # composer, callouts, home, diffie_hellman, numbers
     ├── html/                # templates/*.html, loader.py, renderer.py
-    ├── css/                 # styles/*.css, loader.py
+    ├── css/                 # styles/{header,footer,protocol}.css, loader.py
     └── assets/              # logos/kleptofox.png, loader.py
 ```
 
@@ -272,27 +277,161 @@ tracing.context ── tracing.{events,observer}   (tracing never imports DH mod
 Launch with `uv run streamlit run src/kleptography/app/main.py`. The app
 imports `kleptography.*` as an installed package, which `uv sync` sets up.
 
-Render pipeline:
+#### Navigation
+
+`main.main()` calls `st.set_page_config(...)` and then
+`st.navigation(all_pages(), position="hidden").run()`. There is **no
+sidebar**: pages link to each other with `st.page_link`.
+
+- `app/navigation.py` defines one factory per page: `home_page()` (default,
+  URL `/`) and `diffie_hellman_page()` (URL `/diffie-hellman`). Streamlit
+  identifies a page by its `url_path`, so a factory can be called wherever a
+  link is needed.
+- Page modules import `navigation.py` to build links, so the factories
+  import the page renderers **inside the function body**. This is the
+  deliberate cycle-breaker; do not move those imports to module level.
+- To add a page: write `render_page_<name>()` in `pages/`, add a factory in
+  `navigation.py`, add it to `all_pages()`, and add a `SectionCard` for it
+  in `pages/home.py`. Start the page with `render_component_back_home()`.
+- Home → section uses plain HTML links (see the home page section below),
+  which cause a full page load: session state does not survive it.
+  Section → home uses `st.page_link`, which navigates client-side.
+- Outside a running Streamlit script, `st.Page` returns an empty stub, so
+  page objects cannot be inspected in plain unit tests.
+
+#### Home page
 
 ```text
-main.main() → st.set_page_config(title "Kleptography", icon 🦊, wide)
-            → pages.home.render_page_home()
-                 ├── components.header.render_component_header()
-                 │     assets.asset_data_uri("logos","kleptofox.png")   # logo as base64 data URI
-                 │     html.render_template("header.html", **ctx)       # Jinja2
-                 │     html.render_html(html, css=css.load_css("header.css"))  # st.html with <style>
-                 ├── st.markdown(CalloutComposer.css(), unsafe_allow_html=True)
-                 ├── st.markdown(content.home.build_home_content(), unsafe_allow_html=True)
-                 └── components.footer.render_component_footer()        # same path as header
+pages.home.render_page_home()
+   ├── components.header.render_component_header()
+   │     assets.asset_data_uri("logos","kleptofox.png")   # logo as base64 data URI
+   │     html.render_template("header.html", **ctx)       # Jinja2
+   │     html.render_html(html, css=css.load_css("header.css"))  # st.html with <style>
+   ├── st.markdown(CalloutComposer.css(), unsafe_allow_html=True)
+   ├── _render_sections()        # "Interactive sections"
+   │     render_component_section_cards([SectionCard(...), ...])
+   │       render_template("section_cards.html") + load_css("section_cards.css")
+   ├── st.markdown(content.home.build_home_content(), unsafe_allow_html=True)
+   └── components.footer.render_component_footer()
 ```
+
+**Section cards**: `SectionCard(title, description, status, url_path)`, where
+`url_path` comes from the page factory (e.g. `diffie_hellman_page().url_path`)
+or is `None` for an unavailable section. The whole card is one `<a>`
+element with a relative `href`. Cards sit in a CSS grid (`auto-fit`,
+stretch), so all cards in a row have the same height, and they use the
+header palette. Unavailable cards are a disabled `<div>` showing "Coming
+soon". `st.html` sanitizes with DOMPurify: `href` survives but `target` is
+stripped unless it is `_blank`. The description is plain text, because it
+is inserted into HTML and not rendered as Markdown.
+
+#### Diffie-Hellman section (`pages/diffie_hellman.py`)
+
+The page only orchestrates the `crypto` API and delegates text to `content/`
+and rendering to `components/`:
+
+```text
+render_page_diffie_hellman()
+   ├── render_html("", css=load_css("protocol.css")) + CalloutComposer.css()
+   ├── render_component_back_home()
+   ├── title + build_dh_intro_content()
+   ├── number format control (Decimal / Hexadecimal)         key dh_number_format
+   ├── 1 · public parameters                                  key dh_group_kind
+   │     toy:      number input 8–64 bits (dh_toy_bits) + "Generate a new group"
+   │               → DiffieHellmanParameters.generate_toy(bits), kept in
+   │                 session_state["dh_toy_parameters"] until bits change or regenerate
+   │     standard: selectbox FFDHE2048…8192 (dh_group) → ffdheNNNN()
+   │     p, g, q shown with render_component_parameters
+   ├── 2 · private keys: Random | Chosen by me                key dh_key_mode
+   │     chosen: range shown as LaTeX (1 ≤ a ≤ q − 1, never as a raw number),
+   │     text inputs dh_alice_key / dh_bob_key parsed with parse_integer
+   │     (decimal, or hex with 0x; spaces ignored). Text, not number_input,
+   │     because JS numbers lose precision above 2^53.
+   ├── 3 · run: DiffieHellmanParticipant ×2 (+ load_private_key if chosen)
+   │     → perform_key_exchange(observer=ProtocolExecutionContext())
+   │     → session_state["dh_run"] = ExchangeRun(parameters, build_protocol_steps(events))
+   │     → session_state["dh_revealed"] = 1; InvalidPrivateKey → st.error
+   └── 4 · timeline: progress bar, steps[:revealed] via
+         render_component_protocol_step, then Next step / Show all steps /
+         Start over (on_click callbacks update dh_revealed). If the current
+         parameters differ from ExchangeRun.parameters, the run is stale:
+         an info message replaces the timeline.
+```
+
+- **`content/diffie_hellman.py`** turns the timeline into teaching material
+  without doing any cryptography. `STEP_DEFINITIONS` holds five
+  `StepDefinition(title, explanation, formula)` objects; the explanation is
+  Markdown with inline LaTeX, and the formula is a display LaTeX string.
+  `build_protocol_steps(events)` maps event types to steps 1–5 (parameters,
+  key pairs, exchange, shared secrets, verification) and ignores unmapped
+  types such as `MODULAR_EXPONENTIATION_*`. Each `ProtocolStep` exposes
+  `event(type, actor)` and `events_of(*types)`.
+  `public_key_formula` / `shared_secret_formula` substitute concrete values
+  only when `is_small(...)` holds (at most 12 digits), and otherwise return
+  the symbolic form. The notation is the textbook one: `a`/`A` for Alice,
+  `b`/`B` for Bob, `s_A`/`s_B` for the secrets, and Eve for the
+  eavesdropper. The module also provides the callout builders for toy
+  groups, standard groups and the eavesdropper.
+- **`content/numbers.py`**: `NumberFormat` (DECIMAL, HEXADECIMAL);
+  `parse_integer(text)`; `is_small(*values)`.
+  `format_integer(value, fmt, *, width_bits=None)` separates groups with
+  spaces:
+  - Decimal uses groups of 3 from the right, as a thousands separator.
+    Spaces are used, not `.` or `,`, because they are locale-neutral
+    (ISO 80000) and give the line-wrapping points.
+  - Hexadecimal uses upper-case groups of 8 **from the left**,
+    zero-padded to `ceil(width_bits / 4)` digits, as in RFC 7919. All
+    values modulo `p` then have the same length, so their groups line up in
+    columns when wrapped.
+- **`components/protocol.py`**: `ValueDisplay(number_format, width_bits)`
+  bundles display settings (`width_bits` = bit length of `p`).
+  `render_component_parameters(*, prime, generator, subgroup_order,
+  display)` shows `p`, `g` and `q`; `g` is never padded. It is shared by
+  the parameter section and step 1.
+  `render_component_value(label, value, *, visibility, number_format,
+  width_bits=None)` renders a label, a `Visibility` badge
+  (Public / Private / Shared secret), the bit size, and an
+  `st.code(..., language="text", wrap_lines=True)` block. Blocks longer than
+  400 characters get a fixed height and scroll vertically.
+  `render_component_protocol_step(step, *, display)` draws a bordered
+  container with the title, explanation and formula, then a step-specific
+  body: side-by-side Alice/Bob containers for key pairs and secrets,
+  sender→recipient cards plus the eavesdropper callout for the exchange,
+  and `st.success` for validation and verification.
+- **`css/styles/protocol.css`** makes code blocks (`[data-testid="stCode"]`)
+  wrap **only at spaces** (`word-break: normal`, `overflow-wrap: anywhere`
+  as a fallback), which keeps digit groups aligned. Do not use
+  `break-all`: it splits groups and breaks the alignment. Long KaTeX
+  display formulas scroll inside themselves.
+
+#### UX rules for interactive sections
+
+- No sidebar. Every section is reachable from a home card and has a back
+  link to home.
+- Cryptographic values always go in wrapped code blocks via
+  `render_component_value`: never horizontal scroll, and always a
+  visibility badge.
+- Explain before showing: every step has plain-language text, a general
+  formula, and concrete values when they are small enough.
+- Toy groups are labeled insecure; RFC groups are labeled as standardized.
 
 - **Naming**: `render_page_<name>()` in `pages/`,
   `render_component_<name>()` in `components/`, and
   `build_<name>_content() -> str` in `content/`.
 - **`ContentComposer`** is a fluent Markdown builder: `h1`–`h3`,
   `paragraph(*parts)`, `bullet_list`, `ordered_list`, `quote`, `image`,
-  `divider`, `block(str | CalloutComposer)`, and the static inline helpers
-  `bold`, `italic` and `code`. `build()` joins the blocks with blank lines.
+  `divider`, `formula(latex)` (a display `$$…$$` block), `block(str |
+  CalloutComposer)`, and the static inline helpers `bold`, `italic`, `code`
+  and `math(latex)` (`$…$`). `build()` joins the blocks with blank lines.
+- **LaTeX** is rendered by Streamlit's KaTeX: `$…$` / `$$…$$` in
+  `st.markdown` (via the composer), and `st.latex(...)` for standalone
+  formulas. Streamlit text elements such as `st.success` and labels also
+  accept `$…$`. KaTeX does **not** render inside raw HTML, so
+  `CalloutComposer` content must use HTML (`<em>g<sup>a</sup></em>`) instead
+  of `$…$`. Write LaTeX in raw strings (`r"…"`, `rf"…"`) to avoid invalid
+  escape sequences such as `"\le"`.
+- Show bounds and relations as formulas (`$1 \le a \le q - 1$`) instead of
+  printing huge raw numbers in UI text.
 - **`CalloutComposer(type, title, content)`** is frozen. `type` must be one
   of `note`, `tip`, `warning`, `danger`, `info` or `success`, and each has
   a classmethod constructor (`CalloutComposer.info(content, title=...)`).
@@ -301,6 +440,8 @@ main.main() → st.set_page_config(title "Kleptography", icon 🦊, wide)
 - **Two styling paths exist**. Header and footer use external CSS from
   `css/styles/*.css` with BEM classes (`site-header__*`, `site-footer__*`),
   passed through `render_html`. Callouts embed their CSS in Python.
+  Page-wide rules (e.g. `protocol.css`) are injected with
+  `render_html("", css=load_css(...))`.
 - `render_template(name, **ctx)` builds a `jinja2.Template` from
   `html/templates/<name>`, read as UTF-8. `load_css(name)` reads
   `css/styles/<name>`. Both resolve paths relative to their own module.
@@ -308,9 +449,10 @@ main.main() → st.set_page_config(title "Kleptography", icon 🦊, wide)
   links, and the `kleptographic_mechanisms` list) is **hardcoded** in
   `components/*.py`. When a new mechanism is added, update the header's
   `kleptographic_mechanisms`.
-- The app does **not** use Streamlit multipage navigation yet. New case
-  study pages need a navigation mechanism (`st.navigation` / `st.Page`, or
-  a `pages/` convention) wired in `main.py`.
+- Widgets use explicit `key=`s prefixed by the section (`dh_…`), and
+  section state lives in `st.session_state` under the same prefix.
+- Prefer Material icons (`:material/name:`) and Markdown badges
+  (`:blue-badge[…]`) over emoji in new UI.
 - UI text is English. Educational content is written as Python code using
   the composer, not as `.md` files.
 
@@ -328,6 +470,8 @@ the UI, including the fact that their outputs are indistinguishable.
 Only fix these when the task asks for it, or when you are already editing
 the affected code.
 
+- The interactive section has not been reviewed visually in a browser by
+  an agent; only its rendering logic was exercised.
 - The UI version `"1.0.0"` differs from `pyproject.toml` `0.1.0`, and the
   footer's documentation and license URLs point to the GitHub profile, not
   the repository.
@@ -371,8 +515,12 @@ the affected code.
 - Keep tests deterministic. Use the toy group `p=23, g=2, q=11` as a
   fixture, and fix keys with `participant.load_private_key(x)`. Reference
   values: `x_A=6 → y_A=18`, `x_B=7 → y_B=13`, shared secret `6`. A second
-  valid group for mismatch tests is `p=47, g=2, q=23`. Use `generate_toy()` only where randomness is the property under
-  test, and assert invariants rather than values.
+  valid group for mismatch tests is `p=47, g=2, q=23`. Use `generate_toy()`
+  only where randomness is the property under test, and assert invariants
+  rather than values.
+- Test directories have no `__init__.py`, so **test file basenames must be
+  unique across the whole `tests/` tree** (e.g. `test_html_loader.py` and
+  `test_css_loader.py`, not two `test_loader.py`).
 - RFC group tests check primality of `p` and `q`, `g^q ≡ 1`, bit length,
   and the exact RFC constants.
 - Cover mathematical correctness, invalid inputs and boundary values,
