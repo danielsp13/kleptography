@@ -83,7 +83,7 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Hidden navigation (home ↔ sections, no sidebar) | Done. |
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
 | Kleptographic DH section in the UI | Placeholder card on the home page ("In research", disabled). |
-| Young–Yung DH SETUP (kleptographic DH) | **Not started.** Needs a research issue first. |
+| Young–Yung DH SETUP (kleptographic DH) | **In progress.** Skeleton (`crypto/dh/setup/`, stubs raising `NotImplementedError`) and spec tests written; the maintainer implements it. The research issue is still pending (see 4.6). |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
@@ -101,7 +101,11 @@ Every case study follows the same page progression: mathematical background
 (both constructions under comparable conditions) → observation (what each
 participant can see) → analysis.
 
-Test suite: 316 tests. `crypto/` and `math/` are at about 100% coverage. On
+Test suite: 412 tests. The 316 tests of the existing code pass. The 96 tests
+in `tests/crypto/dh/setup/` are the specification of the SETUP and fail with
+`NotImplementedError` until the maintainer implements the stubs, so
+`pytest` is expected to be red on those tests only. `crypto/` and `math/`
+are at about 100% coverage. On
 the maintainer's request, the new UI modules (`navigation.py`,
 `components/navigation.py`, `components/protocol.py`,
 `content/diffie_hellman.py`, `content/numbers.py`, `pages/*`) **have no tests
@@ -123,7 +127,8 @@ src/kleptography/
 │       ├── exchange.py      # DiffieHellmanExchangeResult
 │       ├── protocol.py      # perform_key_exchange
 │       ├── tracing/         # events.py, observer.py, context.py
-│       └── groups/rfc7919/  # ffdhe2048() … ffdhe8192()
+│       ├── groups/rfc7919/  # ffdhe2048() … ffdhe8192()
+│       └── setup/           # KLEPTOGRAPHIC: Young–Yung SETUP on DH (see 4.6)
 └── app/                     # Streamlit presentation layer
     ├── main.py              # entry point: page config + hidden st.navigation
     ├── navigation.py        # page registry: home_page(), diffie_hellman_page(), all_pages()
@@ -456,14 +461,51 @@ render_page_diffie_hellman()
 - UI text is English. Educational content is written as Python code using
   the composer, not as `.md` files.
 
-### 4.6 Kleptographic code (not yet implemented)
+### 4.6 Kleptographic code (`crypto/dh/setup/`, skeleton only)
 
-The SETUP counterpart of DH does not exist yet. Put it in its own module or
-package, separate from the honest modules above, with names that make its
-nature obvious. Its concrete location must be defined in the task's issue.
-If the issue does not define it, ask instead of choosing one. Honest and
-kleptographic implementations must be directly comparable in tests and in
-the UI, including the fact that their outputs are indistinguishable.
+The maintainer chose the location `crypto/dh/setup/`. The package depends on
+the honest DH modules, and they never import it. **The maintainer implements
+the bodies themselves** as a learning exercise. Do not fill the
+`NotImplementedError` stubs unless a task explicitly asks for it. The
+equations in the docstrings come from the paper as summarized in the
+package docstring. They still have to be checked against the paper in a
+research issue (principle 7).
+
+```text
+setup/
+├── exceptions.py    # SetupError(DiffieHellmanError); InvalidSetupConfiguration,
+│                    # SetupRecoveryError (both also ValueError)
+├── hashing.py       # SetupHashFunction (Protocol), hash_to_exponent = paper's H
+├── configuration.py # YoungYungConfiguration (frozen, kw_only): parameters,
+│                    # attacker_public_key (Y), multiplier_a, offset_b,
+│                    # correction_w (W, odd), hash_function
+├── construction.py  # pure equations: compute_z, derive_private_key (device),
+│                    # recover_z_candidates (attacker)
+├── participant.py   # YoungYungDiffieHellmanParticipant(DiffieHellmanParticipant)
+└── attacker.py      # YoungYungAttacker(parameters, private_key X)
+```
+
+- The compromised device **subclasses** the honest participant and overrides
+  only `_generate_private_key`: honest c1 when no key is stored, and
+  `derive_private_key(c1, t)` afterwards. It is therefore a drop-in argument
+  to `perform_key_exchange` (principle 2 is kept: separate class, no flag).
+  `super()` without arguments breaks in `slots=True` dataclasses on
+  Python < 3.14; call `DiffieHellmanParticipant._generate_private_key(self)`.
+- The bit t is sampled in `_sample_correction_bit()`. Tests force it by
+  monkeypatching that method **on the class**, because slotted instances
+  reject instance attributes.
+- Test vectors (toy group 23/2/11, X=3, Y=8, a=2, b=2, W=3,
+  H(v)=v mod 10 + 1, c1=6, m1=18): t=0 → z=3, c2=4, m2=16; t=1 → z=9,
+  c2=10, m2=12. The honest peer b=7 (B=13) gives the secrets 18 and 16.
+- Open points for the research issue: the paper's group (Z_p^* of order p−1)
+  vs. the project's prime-order subgroup (the role of W being odd); the
+  concrete H and its encoding; the device's behaviour from the third
+  exchange onward (only exchanges 1–2 are specified by the tests); tracing
+  (an `ATTACKER` actor and SETUP events are not designed yet).
+
+Honest and kleptographic implementations must be directly comparable in
+tests and in the UI, including the fact that their outputs are
+indistinguishable.
 
 ## 5. Known limitations and pending cleanups
 
@@ -519,7 +561,8 @@ the affected code.
   only where randomness is the property under test, and assert invariants
   rather than values.
 - Test directories have no `__init__.py`, so **test file basenames must be
-  unique across the whole `tests/` tree** (e.g. `test_html_loader.py` and
+  unique across the whole `tests/` tree** (e.g. `test_setup_participant.py`
+  next to `test_participant.py`, or `test_html_loader.py` and
   `test_css_loader.py`, not two `test_loader.py`).
 - RFC group tests check primality of `p` and `q`, `g^q ≡ 1`, bit length,
   and the exact RFC constants.
