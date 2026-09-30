@@ -83,7 +83,7 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Hidden navigation (home ↔ sections, no sidebar) | Done. |
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
 | Kleptographic DH section in the UI | **Next objective.** Placeholder card on the home page ("In research", disabled). The model is ready for it (see 4.6, "Model for the UI"). |
-| Young–Yung DH SETUP (kleptographic DH) | Done (issue #4), fully tested. Research notes in `docs/young-yung-dh-setup.md`; its open questions (§10) still have to be checked against the paper (see 4.6). |
+| Young–Yung DH SETUP (kleptographic DH) | Done (issue #4), fully tested. Its open points still have to be checked against the paper (see 4.6). |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
@@ -466,9 +466,7 @@ The package depends on the honest DH modules, and they never import it
 written by the maintainer and completed on request. **The `setup/` modules
 have no docstrings on purpose** (removed after serving as a guide; the code
 will be documented later). Keep plain `#` comments; do not add docstrings
-back unless a task asks for it. The mathematical explanation lives in
-`docs/young-yung-dh-setup.md` (Spanish research notes: equations, toy
-example, adaptation to the subgroup, open questions).
+back unless a task asks for it.
 
 ```text
 setup/
@@ -556,7 +554,7 @@ attacker: r = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   (mod p)
   H(v)=v mod 10 + 1, c1=6, m1=18): t=0 → z=3, c2=4, m2=16; t=1 → z=9,
   c2=10, m2=12. The attacker gets r=8 and candidates (3, 9) → (4, 10). The
   honest peer b=7 (B=13) gives the secrets 18 and 16.
-- Open points (see §10 of the research notes): check the exact equations
+- Open points: check the exact equations
   against the paper; the motivation of a and b; the device's behaviour from
   the third exchange onward; the weak/regular/strong classification and its
   assumptions.
@@ -675,7 +673,8 @@ environment.
   patterns before introducing new abstractions.
 - When suggesting a commit message, use the project format:
   `<area>: <lowercase summary>[, closes #N | , #N]`. Areas in use: `crypto`,
-  `crypto-dh`, `ui`, `ui-content`, `test`, `infrastructure`, `AI`.
+  `crypto-dh`, `ui`, `ui-content`, `test`, `infra` (short for
+  infrastructure; both are accepted, `infra` is preferred), `ai`.
 - Update `CLAUDE.md` in the same change whenever a change invalidates it
   (status, architecture, conventions, commands, known limitations).
 - End each task with a report of what changed, the verification results
