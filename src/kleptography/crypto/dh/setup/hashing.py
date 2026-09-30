@@ -1,28 +1,23 @@
-"""
-The hash function H of the Young-Yung SETUP.
-
-H maps the group element z computed by the device to the next private
-exponent c2. Both the device and the attacker must use the same H.
-"""
-
 from __future__ import annotations
 
 from typing import Protocol
 
+from cryptography.hazmat.primitives import hashes
+
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
+
+# Extra output bits so that the reduction modulo q - 1 has a bias below 2^-64
+# (the "extra random bits" method of FIPS 186-5, Appendix A.2.1).
+_EXTRA_BYTES = 8
 
 
 class SetupHashFunction(Protocol):
-    """Signature of any H usable by the SETUP device and the attacker."""
-
     def __call__(
         self,
         value: int,
         *,
         parameters: DiffieHellmanParameters,
-    ) -> int:
-        """Map a group element to a private exponent in [1, q - 1]."""
-        ...
+    ) -> int: ...
 
 
 def hash_to_exponent(
@@ -30,27 +25,19 @@ def hash_to_exponent(
     *,
     parameters: DiffieHellmanParameters,
 ) -> int:
-    """
-    Hash a group element to a valid private exponent (the paper's H).
+    if not 1 <= value < parameters.prime:
+        raise ValueError("value is outside [1, p - 1]")
 
-    Requirements checked by the tests:
+    output_length = (parameters.subgroup_order.bit_length() + 7) // 8 + _EXTRA_BYTES
+    # Fixed-width big-endian encoding of z: every element of the group has
+    # the same length (that of p), as in the I2OSP primitive of RFC 8017.
+    input_length = (parameters.prime.bit_length() + 7) // 8
 
-    - Deterministic: the attacker must obtain the same c2 as the device.
-    - Output in [1, q - 1], so it passes ``validate_private_key``.
-    - Full range: the output covers the whole exponent range even for
-      2048-bit groups. A plain SHA-256 digest (256 bits) is therefore not
-      enough; its output has to be expanded (e.g. SHAKE-256, or SHA-256 in
-      counter mode) to more bits than q before reducing it.
+    h = hashes.Hash(hashes.SHAKE256(output_length))
+    h.update(b"young-yung-setup-H")
+    h.update(value.to_bytes(input_length, "big"))
 
-    Args:
-        value: The group element z, with 1 <= value < p.
-        parameters: The DH group, which fixes p (input encoding) and q
-            (output range).
+    digest_bytes = h.finalize()
+    digest_raw = int.from_bytes(digest_bytes, "big")
 
-    Returns:
-        A private exponent in [1, q - 1].
-
-    Raises:
-        ValueError: If ``value`` is outside [1, p - 1].
-    """
-    raise NotImplementedError("TODO: implement H (see the docstring).")
+    return digest_raw % (parameters.subgroup_order - 1) + 1

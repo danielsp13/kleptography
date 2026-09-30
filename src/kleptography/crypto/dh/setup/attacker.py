@@ -1,49 +1,117 @@
-"""
-The attacker of the Young-Yung SETUP: the only party holding X.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from secrets import randbelow
 
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.setup.configuration import YoungYungConfiguration
+from kleptography.crypto.dh.setup.construction import compute_r, recover_z_candidates
+from kleptography.crypto.dh.setup.exceptions import (
+    InvalidSetupConfiguration,
+    SetupRecoveryError,
+)
+from kleptography.crypto.dh.setup.hashing import SetupHashFunction, hash_to_exponent
+from kleptography.crypto.dh.setup.records import SetupRecovery
+from kleptography.crypto.dh.validation import validate_private_key, validate_public_key
+from kleptography.math.modular import mod_pow
 
 
 @dataclass(frozen=True, slots=True)
 class YoungYungAttacker:
-    """
-    Attacker who designed the device and holds the private key X.
-
-    The attacker only observes the public channel: the device's public
-    values m1 and m2, and the honest peer's public value.
-
-    Attributes:
-        parameters: The DH group shared with the device.
-        private_key: The attacker's private key X, in [1, q - 1].
-    """
-
     parameters: DiffieHellmanParameters
     private_key: int = field(repr=False)
 
     def __post_init__(self) -> None:
-        """
-        Validate the attacker's private key.
-
-        Raises:
-            InvalidPrivateKey: If X is outside [1, q - 1].
-        """
-        raise NotImplementedError("TODO: validate X.")
+        validate_private_key(
+            self.private_key, subgroup_order=self.parameters.subgroup_order
+        )
 
     @property
     def public_key(self) -> int:
-        """Return the public key Y = g^X mod p embedded in the device."""
-        raise NotImplementedError("TODO: compute Y.")
+        return mod_pow(
+            self.parameters.generator, self.private_key, self.parameters.prime
+        )
 
     @classmethod
     def generate(cls, parameters: DiffieHellmanParameters) -> YoungYungAttacker:
-        """Create an attacker with a fresh random private key X."""
-        raise NotImplementedError("TODO: generate X.")
+        return cls(parameters, randbelow(parameters.subgroup_order - 1) + 1)
+
+    def generate_configuration(
+        self,
+        *,
+        hash_function: SetupHashFunction = hash_to_exponent,
+    ) -> YoungYungConfiguration:
+        subgroup_order = self.parameters.subgroup_order
+        if subgroup_order < 3:
+            raise InvalidSetupConfiguration("The group is too small for a SETUP.")
+
+        # With a*X = 1 (mod q), z no longer depends on c1 and c2 takes only
+        # two values. Only the attacker knows X, so only it can avoid it.
+        multiplier_a = randbelow(subgroup_order - 1) + 1
+        while multiplier_a * self.private_key % subgroup_order == 1:
+            multiplier_a = randbelow(subgroup_order - 1) + 1
+
+        return YoungYungConfiguration(
+            parameters=self.parameters,
+            attacker_public_key=self.public_key,
+            multiplier_a=multiplier_a,
+            offset_b=randbelow(subgroup_order - 1) + 1,
+            correction_w=2 * randbelow((subgroup_order - 1) // 2) + 1,
+            hash_function=hash_function,
+        )
+
+    def recover(
+        self,
+        *,
+        first_public_key: int,
+        second_public_key: int,
+        configuration: YoungYungConfiguration,
+    ) -> SetupRecovery:
+        prime = self.parameters.prime
+        subgroup_order = self.parameters.subgroup_order
+
+        if (
+            configuration.parameters != self.parameters
+            or configuration.attacker_public_key != self.public_key
+        ):
+            raise InvalidSetupConfiguration(
+                "The configuration does not embed this attacker's public key."
+            )
+
+        validate_public_key(
+            first_public_key, prime=prime, subgroup_order=subgroup_order
+        )
+        validate_public_key(
+            second_public_key, prime=prime, subgroup_order=subgroup_order
+        )
+
+        z_candidates = recover_z_candidates(
+            first_public_key,
+            attacker_private_key=self.private_key,
+            configuration=configuration,
+        )
+        private_key_candidates = (
+            configuration.hash_function(z_candidates[0], parameters=self.parameters),
+            configuration.hash_function(z_candidates[1], parameters=self.parameters),
+        )
+
+        # t is unknown: try z1 (t = 0), then z2 (t = 1), and keep the one
+        # whose exponent reproduces the observed m2.
+        for correction_bit, c2 in enumerate(private_key_candidates):
+            if mod_pow(self.parameters.generator, c2, prime) == second_public_key:
+                return SetupRecovery(
+                    first_public_key=first_public_key,
+                    second_public_key=second_public_key,
+                    r=compute_r(first_public_key, configuration=configuration),
+                    z_candidates=z_candidates,
+                    private_key_candidates=private_key_candidates,
+                    correction_bit=correction_bit,
+                    private_key=c2,
+                )
+
+        raise SetupRecoveryError(
+            "Neither candidate reproduces m2: it was not derived from m1 by this SETUP."
+        )
 
     def recover_private_key(
         self,
@@ -52,25 +120,11 @@ class YoungYungAttacker:
         second_public_key: int,
         configuration: YoungYungConfiguration,
     ) -> int:
-        """
-        Recover the device's second exponent c2 from m1 and m2.
-
-        Args:
-            first_public_key: m1, the device's first public value.
-            second_public_key: m2, the device's second public value.
-            configuration: The constants embedded in the device.
-
-        Returns:
-            c2 = H(z1) if g^H(z1) == m2, otherwise H(z2).
-
-        Raises:
-            InvalidSetupConfiguration: If the configuration does not embed
-                this attacker's public key.
-            InvalidPublicKey: If m1 or m2 is not a valid public value.
-            SetupRecoveryError: If neither candidate matches m2 (m2 was not
-                produced by this SETUP from m1).
-        """
-        raise NotImplementedError("TODO: recover c2.")
+        return self.recover(
+            first_public_key=first_public_key,
+            second_public_key=second_public_key,
+            configuration=configuration,
+        ).private_key
 
     def recover_shared_secret(
         self,
@@ -80,22 +134,16 @@ class YoungYungAttacker:
         peer_public_key: int,
         configuration: YoungYungConfiguration,
     ) -> int:
-        """
-        Recover the shared secret of the device's second exchange.
+        validate_public_key(
+            peer_public_key,
+            prime=self.parameters.prime,
+            subgroup_order=self.parameters.subgroup_order,
+        )
 
-        Args:
-            first_public_key: m1, the device's first public value.
-            second_public_key: m2, the device's second public value.
-            peer_public_key: The honest peer's public value in the second
-                exchange.
-            configuration: The constants embedded in the device.
+        second_private_key = self.recover_private_key(
+            first_public_key=first_public_key,
+            second_public_key=second_public_key,
+            configuration=configuration,
+        )
 
-        Returns:
-            peer_public_key^c2 mod p.
-
-        Raises:
-            InvalidSetupConfiguration: See ``recover_private_key``.
-            InvalidPublicKey: If any public value is invalid.
-            SetupRecoveryError: See ``recover_private_key``.
-        """
-        raise NotImplementedError("TODO: recover the shared secret.")
+        return mod_pow(peer_public_key, second_private_key, self.parameters.prime)

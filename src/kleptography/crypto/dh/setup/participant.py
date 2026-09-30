@@ -1,53 +1,50 @@
-"""
-A Diffie-Hellman participant running inside a Young-Yung SETUP device.
-"""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from secrets import randbelow
 
+from kleptography.crypto.dh.exceptions import DiffieHellmanParametersMismatch
 from kleptography.crypto.dh.participant import DiffieHellmanParticipant
 from kleptography.crypto.dh.setup.configuration import YoungYungConfiguration
+from kleptography.crypto.dh.setup.construction import derive_setup
+from kleptography.crypto.dh.setup.records import SetupDerivation
 
 
 @dataclass(slots=True)
 class YoungYungDiffieHellmanParticipant(DiffieHellmanParticipant):
-    """
-    Compromised DH participant: same public API as the honest one.
-
-    It subclasses ``DiffieHellmanParticipant`` so that it can be passed to
-    ``perform_key_exchange`` unchanged: from the outside it is the same black
-    box. Only ``_generate_private_key`` differs:
-
-    - Without a stored exponent (first exchange), it generates an honest,
-      uniformly random exponent c1.
-    - With a stored exponent c1 (the current ``_private_key``), it samples t
-      and returns ``derive_private_key(c1, ...)``.
-
-    Open question (research issue): what the device does from the third
-    exchange onward. The tests only fix the first two exchanges.
-
-    Pitfall: ``super()`` without arguments does not work inside methods of a
-    ``slots=True`` dataclass on Python < 3.14 (the class is recreated). Call
-    ``DiffieHellmanParticipant._generate_private_key(self)`` explicitly.
-    """
-
     configuration: YoungYungConfiguration
 
-    def __post_init__(self) -> None:
-        """
-        Check that the device and its configuration use the same group.
+    _last_derivation: SetupDerivation | None = field(
+        init=False, default=None, repr=False
+    )
 
-        Raises:
-            DiffieHellmanParametersMismatch: If ``parameters`` differs from
-                ``configuration.parameters``.
-        """
-        raise NotImplementedError("TODO: check the parameters.")
+    def __post_init__(self) -> None:
+        if self.parameters != self.configuration.parameters:
+            raise DiffieHellmanParametersMismatch(
+                "The device and its SETUP configuration use different DH groups."
+            )
+
+    @property
+    def last_derivation(self) -> SetupDerivation | None:
+        return self._last_derivation
+
+    def load_private_key(self, private_key: int) -> None:
+        DiffieHellmanParticipant.load_private_key(self, private_key)
+        self._last_derivation = None
 
     def _generate_private_key(self) -> int:
-        """Return an honest c1 first, and the SETUP exponent c2 afterwards."""
-        raise NotImplementedError("TODO: implement the SETUP key generation.")
+        previous_private_key = self._private_key
+        if previous_private_key is None:
+            self._last_derivation = None
+            return DiffieHellmanParticipant._generate_private_key(self)
+
+        derivation = derive_setup(
+            previous_private_key,
+            correction_bit=self._sample_correction_bit(),
+            configuration=self.configuration,
+        )
+        self._last_derivation = derivation
+        return derivation.private_key
 
     def _sample_correction_bit(self) -> int:
-        """Sample the paper's bit t uniformly from {0, 1} with ``secrets``."""
-        raise NotImplementedError("TODO: sample t.")
+        return randbelow(2)

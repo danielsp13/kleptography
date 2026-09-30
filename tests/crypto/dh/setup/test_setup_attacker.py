@@ -13,6 +13,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from kleptography.crypto.dh.exceptions import InvalidPrivateKey, InvalidPublicKey
+from kleptography.crypto.dh.groups.rfc7919 import ffdhe2048
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.participant import DiffieHellmanParticipant
 from kleptography.crypto.dh.protocol import perform_key_exchange
@@ -22,9 +23,11 @@ from kleptography.crypto.dh.setup.exceptions import (
     InvalidSetupConfiguration,
     SetupRecoveryError,
 )
+from kleptography.crypto.dh.setup.hashing import hash_to_exponent
 from kleptography.crypto.dh.setup.participant import (
     YoungYungDiffieHellmanParticipant,
 )
+from kleptography.crypto.dh.setup.records import SetupRecovery
 from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
 from kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
 
@@ -285,3 +288,423 @@ def test_attacker_cannot_recover_from_honest_participant() -> None:
             second_public_key=second_public_key,
             configuration=configuration,
         )
+
+
+# --- Complementary tests -----------------------------------------------------
+
+
+def reference_second_key(
+    previous_private_key: int,
+    correction_bit: int,
+    configuration: YoungYungConfiguration,
+) -> int:
+    """c2 = H(g^(c1 - W*t) * Y^(-a*c1 - b) mod p), computed independently."""
+    parameters = configuration.parameters
+    prime = parameters.prime
+    z = (
+        pow(
+            parameters.generator,
+            previous_private_key - configuration.correction_w * correction_bit,
+            prime,
+        )
+        * pow(
+            configuration.attacker_public_key,
+            -configuration.multiplier_a * previous_private_key - configuration.offset_b,
+            prime,
+        )
+        % prime
+    )
+    return configuration.hash_function(z, parameters=parameters)
+
+
+@pytest.mark.parametrize("private_key", range(1, 11))
+def test_attacker_public_key_for_every_private_key(
+    parameters: DiffieHellmanParameters,
+    private_key: int,
+) -> None:
+    attacker = YoungYungAttacker(parameters, private_key)
+
+    assert attacker.public_key == pow(2, private_key, 23)
+
+
+@pytest.fixture
+def larger_parameters() -> DiffieHellmanParameters:
+    return DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
+
+
+@pytest.mark.parametrize("private_key", [11, 15, 22])
+def test_attacker_validates_private_key_in_its_own_group(
+    larger_parameters: DiffieHellmanParameters,
+    private_key: int,
+) -> None:
+    attacker = YoungYungAttacker(larger_parameters, private_key)
+
+    assert attacker.public_key == pow(2, private_key, 47)
+
+
+def test_attacker_rejects_private_key_equal_to_its_group_order(
+    larger_parameters: DiffieHellmanParameters,
+) -> None:
+    with pytest.raises(InvalidPrivateKey):
+        YoungYungAttacker(larger_parameters, 23)
+
+
+def test_generate_attacker_returns_valid_attacker(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    private_keys = set()
+    for _ in range(64):
+        attacker = YoungYungAttacker.generate(parameters)
+
+        assert isinstance(attacker, YoungYungAttacker)
+        assert 1 <= attacker.private_key < parameters.subgroup_order
+        private_keys.add(attacker.private_key)
+
+    assert len(private_keys) > 1
+
+
+@pytest.mark.parametrize("attacker_private_key", range(1, 11))
+@pytest.mark.parametrize("correction_bit", [0, 1])
+def test_recovery_for_every_first_exponent(
+    parameters: DiffieHellmanParameters,
+    attacker_private_key: int,
+    correction_bit: int,
+) -> None:
+    """Every X, c1 and t of the toy group, with the toy H."""
+    attacker = YoungYungAttacker(parameters, attacker_private_key)
+    configuration = build_configuration(
+        parameters, attacker_public_key=pow(2, attacker_private_key, 23)
+    )
+
+    for previous_private_key in range(1, 11):
+        first_public_key = pow(2, previous_private_key, 23)
+        second_private_key = reference_second_key(
+            previous_private_key, correction_bit, configuration
+        )
+        second_public_key = pow(2, second_private_key, 23)
+
+        recovered_key = attacker.recover_private_key(
+            first_public_key=first_public_key,
+            second_public_key=second_public_key,
+            configuration=configuration,
+        )
+        recovered_secret = attacker.recover_shared_secret(
+            first_public_key=first_public_key,
+            second_public_key=second_public_key,
+            peer_public_key=13,
+            configuration=configuration,
+        )
+
+        assert type(recovered_key) is int
+        assert recovered_key == second_private_key
+        assert recovered_secret == pow(13, second_private_key, 23)
+
+
+@pytest.mark.parametrize("correction_bit", [0, 1])
+def test_recovery_in_larger_group(
+    larger_parameters: DiffieHellmanParameters,
+    correction_bit: int,
+) -> None:
+    """Public values above 23 must be validated against p = 47."""
+    attacker = YoungYungAttacker(larger_parameters, 15)
+    configuration = YoungYungConfiguration(
+        parameters=larger_parameters,
+        attacker_public_key=pow(2, 15, 47),
+        multiplier_a=3,
+        offset_b=5,
+        correction_w=7,
+        hash_function=toy_hash,
+    )
+    peer_public_key = pow(2, 9, 47)
+
+    for previous_private_key in range(1, 23):
+        second_private_key = reference_second_key(
+            previous_private_key, correction_bit, configuration
+        )
+
+        recovered_secret = attacker.recover_shared_secret(
+            first_public_key=pow(2, previous_private_key, 47),
+            second_public_key=pow(2, second_private_key, 47),
+            peer_public_key=peer_public_key,
+            configuration=configuration,
+        )
+
+        assert recovered_secret == pow(peer_public_key, second_private_key, 47)
+
+
+@pytest.mark.parametrize(
+    ("first_public_key", "second_public_key"),
+    [(1, 16), (5, 16), (18, 0), (18, 22)],
+)
+def test_recover_shared_secret_rejects_invalid_device_keys(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+    first_public_key: int,
+    second_public_key: int,
+) -> None:
+    with pytest.raises(InvalidPublicKey):
+        attacker.recover_shared_secret(
+            first_public_key=first_public_key,
+            second_public_key=second_public_key,
+            peer_public_key=13,
+            configuration=configuration,
+        )
+
+
+def test_recover_shared_secret_rejects_foreign_configuration(
+    attacker: YoungYungAttacker,
+    parameters: DiffieHellmanParameters,
+) -> None:
+    foreign_configuration = build_configuration(parameters, attacker_public_key=4)
+
+    with pytest.raises(InvalidSetupConfiguration):
+        attacker.recover_shared_secret(
+            first_public_key=18,
+            second_public_key=16,
+            peer_public_key=13,
+            configuration=foreign_configuration,
+        )
+
+
+def test_recover_shared_secret_fails_for_unrelated_output(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+) -> None:
+    with pytest.raises(SetupRecoveryError):
+        attacker.recover_shared_secret(
+            first_public_key=18,
+            second_public_key=2,
+            peer_public_key=13,
+            configuration=configuration,
+        )
+
+
+def test_recover_private_key_fails_when_outputs_are_swapped(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+) -> None:
+    """The recovery goes from m1 to m2, not backwards (m2 = 16 -> m1 = 18)."""
+    with pytest.raises(SetupRecoveryError):
+        attacker.recover_private_key(
+            first_public_key=16,
+            second_public_key=18,
+            configuration=configuration,
+        )
+
+
+@pytest.mark.parametrize("correction_bit", [0, 1])
+def test_attacker_recovers_second_exchange_in_rfc_group(
+    monkeypatch: pytest.MonkeyPatch,
+    correction_bit: int,
+) -> None:
+    """End to end with a 2048-bit standardized group and the default H."""
+    monkeypatch.setattr(
+        YoungYungDiffieHellmanParticipant,
+        "_sample_correction_bit",
+        lambda self: correction_bit,
+    )
+    parameters = ffdhe2048()
+    attacker = YoungYungAttacker.generate(parameters)
+    configuration = YoungYungConfiguration(
+        parameters=parameters,
+        attacker_public_key=attacker.public_key,
+        multiplier_a=7,
+        offset_b=11,
+        correction_w=3,
+    )
+    device = YoungYungDiffieHellmanParticipant(parameters, configuration)
+
+    perform_key_exchange(device, DiffieHellmanParticipant(parameters))
+    first_public_key = device.public_key
+    device.generate_keypair()
+    peer = DiffieHellmanParticipant(parameters)
+    second = perform_key_exchange(device, peer)
+
+    assert first_public_key is not None
+    assert device.public_key is not None
+    assert peer.public_key is not None
+
+    recovered_secret = attacker.recover_shared_secret(
+        first_public_key=first_public_key,
+        second_public_key=device.public_key,
+        peer_public_key=peer.public_key,
+        configuration=configuration,
+    )
+
+    assert recovered_secret == second.alice_shared_secret
+
+
+@pytest.mark.parametrize(
+    ("second_public_key", "expected_bit", "expected_key"),
+    [(16, 0, 4), (12, 1, 10)],
+)
+def test_recover_records_intermediate_values(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+    second_public_key: int,
+    expected_bit: int,
+    expected_key: int,
+) -> None:
+    recovery = attacker.recover(
+        first_public_key=18,
+        second_public_key=second_public_key,
+        configuration=configuration,
+    )
+
+    assert recovery == SetupRecovery(
+        first_public_key=18,
+        second_public_key=second_public_key,
+        r=8,
+        z_candidates=(3, 9),
+        private_key_candidates=(4, 10),
+        correction_bit=expected_bit,
+        private_key=expected_key,
+    )
+
+
+def test_recover_raises_like_recover_private_key(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+    parameters: DiffieHellmanParameters,
+) -> None:
+    with pytest.raises(SetupRecoveryError):
+        attacker.recover(
+            first_public_key=18, second_public_key=2, configuration=configuration
+        )
+    with pytest.raises(InvalidPublicKey):
+        attacker.recover(
+            first_public_key=5, second_public_key=16, configuration=configuration
+        )
+    with pytest.raises(InvalidSetupConfiguration):
+        attacker.recover(
+            first_public_key=18,
+            second_public_key=16,
+            configuration=build_configuration(parameters, attacker_public_key=4),
+        )
+
+
+def test_recover_rejects_configuration_of_another_group(
+    attacker: YoungYungAttacker,
+) -> None:
+    other_parameters = DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
+    other_configuration = build_configuration(other_parameters, attacker_public_key=8)
+
+    with pytest.raises(InvalidSetupConfiguration):
+        attacker.recover(
+            first_public_key=18,
+            second_public_key=16,
+            configuration=other_configuration,
+        )
+
+
+def test_recovered_bit_matches_device_bit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The attacker learns t too (unless H(z1) and H(z2) collide)."""
+    parameters = DiffieHellmanParameters.generate_toy(bits=32)
+    attacker = YoungYungAttacker.generate(parameters)
+    configuration = attacker.generate_configuration()
+
+    for correction_bit in (0, 1):
+        monkeypatch.setattr(
+            YoungYungDiffieHellmanParticipant,
+            "_sample_correction_bit",
+            lambda self, bit=correction_bit: bit,
+        )
+        device = YoungYungDiffieHellmanParticipant(parameters, configuration)
+        device.generate_keypair()
+        first_public_key = device.public_key
+        device.generate_keypair()
+        derivation = device.last_derivation
+
+        assert first_public_key is not None
+        assert device.public_key is not None
+        assert derivation is not None
+
+        recovery = attacker.recover(
+            first_public_key=first_public_key,
+            second_public_key=device.public_key,
+            configuration=configuration,
+        )
+
+        assert recovery.correction_bit == derivation.correction_bit
+        assert recovery.z_candidates[correction_bit] == derivation.z
+        assert recovery.private_key == derivation.private_key
+
+
+def test_generate_configuration_embeds_attacker_key(
+    attacker: YoungYungAttacker,
+    parameters: DiffieHellmanParameters,
+) -> None:
+    for _ in range(64):
+        configuration = attacker.generate_configuration()
+
+        assert configuration.parameters is parameters
+        assert configuration.attacker_public_key == attacker.public_key
+        assert configuration.hash_function is hash_to_exponent
+        assert 1 <= configuration.multiplier_a < 11
+        assert configuration.multiplier_a * 3 % 11 != 1
+        assert 1 <= configuration.offset_b < 11
+        assert 1 <= configuration.correction_w < 11
+        assert configuration.correction_w % 2 == 1
+
+
+def test_generate_configuration_skips_degenerate_multiplier(
+    attacker: YoungYungAttacker,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """X = 3 and a = 4 give a*X = 12 = 1 (mod 11), so a is sampled again."""
+    samples = iter([3, 0, 5, 1])
+    monkeypatch.setattr(
+        "kleptography.crypto.dh.setup.attacker.randbelow",
+        lambda upper: next(samples),
+    )
+
+    configuration = attacker.generate_configuration()
+
+    assert configuration.multiplier_a == 1
+    assert configuration.offset_b == 6
+    assert configuration.correction_w == 3
+
+
+def test_generate_configuration_uses_given_hash(
+    attacker: YoungYungAttacker,
+) -> None:
+    configuration = attacker.generate_configuration(hash_function=toy_hash)
+
+    assert configuration.hash_function is toy_hash
+
+
+def test_generate_configuration_rejects_tiny_group() -> None:
+    parameters = DiffieHellmanParameters(prime=5, generator=4, subgroup_order=2)
+    attacker = YoungYungAttacker(parameters, 1)
+
+    with pytest.raises(InvalidSetupConfiguration):
+        attacker.generate_configuration()
+
+
+@pytest.mark.parametrize("repetition", range(5))
+def test_generated_configuration_works_end_to_end(repetition: int) -> None:
+    parameters = DiffieHellmanParameters.generate_toy(bits=32)
+    attacker = YoungYungAttacker.generate(parameters)
+    configuration = attacker.generate_configuration()
+    device = YoungYungDiffieHellmanParticipant(parameters, configuration)
+
+    perform_key_exchange(device, DiffieHellmanParticipant(parameters))
+    first_public_key = device.public_key
+    device.generate_keypair()
+    peer = DiffieHellmanParticipant(parameters)
+    second = perform_key_exchange(device, peer)
+
+    assert first_public_key is not None
+    assert device.public_key is not None
+    assert peer.public_key is not None
+    assert (
+        attacker.recover_shared_secret(
+            first_public_key=first_public_key,
+            second_public_key=device.public_key,
+            peer_public_key=peer.public_key,
+            configuration=configuration,
+        )
+        == second.bob_shared_secret
+    )

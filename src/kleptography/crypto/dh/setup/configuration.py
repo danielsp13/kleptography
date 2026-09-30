@@ -1,33 +1,15 @@
-"""
-Constants that the attacker embeds in a Young-Yung SETUP device.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
+from kleptography.crypto.dh.setup.exceptions import InvalidSetupConfiguration
 from kleptography.crypto.dh.setup.hashing import SetupHashFunction, hash_to_exponent
+from kleptography.crypto.dh.validation import validate_public_key
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class YoungYungConfiguration:
-    """
-    Everything the attacker hard-codes into the compromised device.
-
-    A reverse engineer who opens the device learns all of these values, but
-    not the attacker's private key X. The SETUP must stay secure against
-    that reverse engineer.
-
-    Attributes:
-        parameters: The DH group (p, g, q) used by the device.
-        attacker_public_key: The attacker's public key Y = g^X mod p.
-        multiplier_a: The constant a of the paper.
-        offset_b: The constant b of the paper.
-        correction_w: The constant W of the paper (an odd integer).
-        hash_function: The hash function H of the paper.
-    """
-
     parameters: DiffieHellmanParameters
     attacker_public_key: int
     multiplier_a: int
@@ -36,21 +18,15 @@ class YoungYungConfiguration:
     hash_function: SetupHashFunction = hash_to_exponent
 
     def __post_init__(self) -> None:
-        """
-        Validate the embedded constants.
+        validate_public_key(
+            self.attacker_public_key,
+            prime=self.parameters.prime,
+            subgroup_order=self.parameters.subgroup_order,
+        )
 
-        Rules checked by the tests:
-
-        - ``attacker_public_key`` is a valid public value of the group
-          (reuse ``validate_public_key``; it raises ``InvalidPublicKey``).
-        - ``multiplier_a`` is not 0 modulo q. Otherwise r = g^b is known to
-          everyone and anybody could compute r^X = Y^b and recover c2.
-        - ``correction_w`` is odd, as stated in the paper.
-        - ``correction_w`` is not 0 modulo q. Otherwise g^W = 1, both
-          candidates z1 and z2 coincide and t has no effect.
-
-        Raises:
-            InvalidPublicKey: If the attacker public key is invalid.
-            InvalidSetupConfiguration: If a or W violates a rule above.
-        """
-        raise NotImplementedError("TODO: validate the SETUP configuration.")
+        if self.multiplier_a % self.parameters.subgroup_order == 0:
+            raise InvalidSetupConfiguration("Weak 'a' multiplier (a % q == 0)")
+        if self.correction_w % 2 == 0:
+            raise InvalidSetupConfiguration("'w' parameter is even")
+        if self.correction_w % self.parameters.subgroup_order == 0:
+            raise InvalidSetupConfiguration("Weak 'w' parameter (w % q == 0)")

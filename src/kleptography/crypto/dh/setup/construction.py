@@ -1,24 +1,10 @@
-"""
-Equations of the Young-Yung SETUP, as pure functions.
-
-Device side and attacker side are kept next to each other so that it is
-easy to check that one undoes the other:
-
-    device:   z  = g^(c1 - W*t) * Y^(-a*c1 - b)            mod p
-    attacker: r  = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   mod p
-
-Since Y = g^X and m1 = g^c1, z1 is the device's z for t = 0 and z2 is the
-device's z for t = 1.
-
-Implementation hints: g and Y have order q, so exponents can be reduced
-modulo q (a negative exponent e becomes e mod q). Use ``mod_pow`` and
-``mod_inverse`` from ``kleptography.math.modular``, and the validators from
-``kleptography.crypto.dh.validation``.
-"""
-
 from __future__ import annotations
 
+from kleptography.crypto.dh.exceptions import InvalidPrivateKey
 from kleptography.crypto.dh.setup.configuration import YoungYungConfiguration
+from kleptography.crypto.dh.setup.records import SetupDerivation
+from kleptography.crypto.dh.validation import validate_private_key, validate_public_key
+from kleptography.math.modular import mod_inverse, mod_pow
 
 
 def compute_z(
@@ -27,22 +13,53 @@ def compute_z(
     correction_bit: int,
     configuration: YoungYungConfiguration,
 ) -> int:
-    """
-    Compute the device's intermediate value z (device side).
+    validate_private_key(
+        previous_private_key, subgroup_order=configuration.parameters.subgroup_order
+    )
+    if correction_bit not in [0, 1]:
+        raise ValueError("correction bit is not 0 or 1")
 
-    Args:
-        previous_private_key: The stored exponent c1 of the first exchange.
-        correction_bit: The random bit t of the paper, 0 or 1.
-        configuration: The constants embedded in the device.
+    prime = configuration.parameters.prime
+    subgroup_order = configuration.parameters.subgroup_order
 
-    Returns:
-        z = g^(c1 - W*t) * Y^(-a*c1 - b) mod p.
+    # g and Y have order q, so negative exponents are reduced modulo q.
+    left_expr = mod_pow(
+        configuration.parameters.generator,
+        (previous_private_key - configuration.correction_w * correction_bit)
+        % subgroup_order,
+        prime,
+    )
+    right_expr = mod_pow(
+        configuration.attacker_public_key,
+        (-configuration.multiplier_a * previous_private_key - configuration.offset_b)
+        % subgroup_order,
+        prime,
+    )
 
-    Raises:
-        InvalidPrivateKey: If c1 is outside [1, q - 1].
-        ValueError: If ``correction_bit`` is not 0 or 1.
-    """
-    raise NotImplementedError("TODO: implement the device's z.")
+    return (left_expr * right_expr) % prime
+
+
+def derive_setup(
+    previous_private_key: int,
+    *,
+    correction_bit: int,
+    configuration: YoungYungConfiguration,
+) -> SetupDerivation:
+    z = compute_z(
+        previous_private_key,
+        correction_bit=correction_bit,
+        configuration=configuration,
+    )
+    c2 = configuration.hash_function(z, parameters=configuration.parameters)
+    if not 1 <= c2 < configuration.parameters.subgroup_order:
+        raise InvalidPrivateKey("'c2 = H(z)' is out of range [1, q - 1]")
+
+    return SetupDerivation(
+        previous_private_key=previous_private_key,
+        correction_bit=correction_bit,
+        z=z,
+        private_key=c2,
+    )
 
 
 def derive_private_key(
@@ -51,22 +68,38 @@ def derive_private_key(
     correction_bit: int,
     configuration: YoungYungConfiguration,
 ) -> int:
-    """
-    Derive the second private exponent c2 = H(z) (device side).
+    return derive_setup(
+        previous_private_key,
+        correction_bit=correction_bit,
+        configuration=configuration,
+    ).private_key
 
-    Args:
-        previous_private_key: The stored exponent c1 of the first exchange.
-        correction_bit: The random bit t of the paper, 0 or 1.
-        configuration: The constants embedded in the device.
 
-    Returns:
-        The exponent c2, validated as a private key.
+def compute_r(
+    first_public_key: int,
+    *,
+    configuration: YoungYungConfiguration,
+) -> int:
+    prime = configuration.parameters.prime
+    subgroup_order = configuration.parameters.subgroup_order
 
-    Raises:
-        InvalidPrivateKey: If c1, or the output of H, is outside [1, q - 1].
-        ValueError: If ``correction_bit`` is not 0 or 1.
-    """
-    raise NotImplementedError("TODO: implement c2 = H(z).")
+    validate_public_key(
+        first_public_key,
+        prime=prime,
+        subgroup_order=subgroup_order,
+    )
+
+    # Exponents are reduced modulo q (a or b may be negative or >= q).
+    r_left_expr = mod_pow(
+        first_public_key, configuration.multiplier_a % subgroup_order, prime
+    )
+    r_right_expr = mod_pow(
+        configuration.parameters.generator,
+        configuration.offset_b % subgroup_order,
+        prime,
+    )
+
+    return (r_left_expr * r_right_expr) % prime
 
 
 def recover_z_candidates(
@@ -75,20 +108,21 @@ def recover_z_candidates(
     attacker_private_key: int,
     configuration: YoungYungConfiguration,
 ) -> tuple[int, int]:
-    """
-    Recompute both possible values of z from m1 (attacker side).
+    prime = configuration.parameters.prime
+    subgroup_order = configuration.parameters.subgroup_order
 
-    Args:
-        first_public_key: The public value m1 = g^c1 seen on the channel.
-        attacker_private_key: The attacker's private key X.
-        configuration: The constants embedded in the device.
+    r = compute_r(first_public_key, configuration=configuration)
+    validate_private_key(attacker_private_key, subgroup_order=subgroup_order)
 
-    Returns:
-        The pair (z1, z2): z1 = m1 / r^X with r = m1^a * g^b, and
-        z2 = z1 / g^W, all modulo p.
+    # Division modulo p is multiplication by the modular inverse.
+    z1 = (
+        first_public_key * mod_inverse(mod_pow(r, attacker_private_key, prime), prime)
+    ) % prime
+    g_to_w = mod_pow(
+        configuration.parameters.generator,
+        configuration.correction_w % subgroup_order,
+        prime,
+    )
+    z2 = (z1 * mod_inverse(g_to_w, prime)) % prime
 
-    Raises:
-        InvalidPublicKey: If m1 is not a valid public value.
-        InvalidPrivateKey: If X is outside [1, q - 1].
-    """
-    raise NotImplementedError("TODO: implement the attacker's z candidates.")
+    return (z1, z2)

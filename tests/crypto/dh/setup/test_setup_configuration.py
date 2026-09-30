@@ -133,3 +133,112 @@ def test_configuration_accepts_odd_correction(
     configuration = build_configuration(parameters, correction_w=correction_w)
 
     assert configuration.correction_w == correction_w
+
+
+# --- Complementary tests -----------------------------------------------------
+
+
+@pytest.fixture
+def larger_parameters() -> DiffieHellmanParameters:
+    return DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
+
+
+@pytest.mark.parametrize("attacker_public_key", [2, 25, 32])
+def test_configuration_validates_attacker_key_in_its_own_group(
+    larger_parameters: DiffieHellmanParameters,
+    attacker_public_key: int,
+) -> None:
+    """2, 25 and 32 are in the order-23 subgroup of Z_47^* (25 > 23)."""
+    configuration = build_configuration(
+        larger_parameters, attacker_public_key=attacker_public_key
+    )
+
+    assert configuration.attacker_public_key == attacker_public_key
+
+
+@pytest.mark.parametrize("attacker_public_key", [5, 13, 46, 47])
+def test_configuration_rejects_attacker_key_outside_its_own_group(
+    larger_parameters: DiffieHellmanParameters,
+    attacker_public_key: int,
+) -> None:
+    """13 is in the subgroup of Z_23^* but not in the one of Z_47^*."""
+    with pytest.raises(InvalidPublicKey):
+        build_configuration(larger_parameters, attacker_public_key=attacker_public_key)
+
+
+@pytest.mark.parametrize("multiplier_a", [1, 10, 12, -1, 23])
+def test_configuration_accepts_multiplier_not_zero_modulo_q(
+    parameters: DiffieHellmanParameters,
+    multiplier_a: int,
+) -> None:
+    configuration = build_configuration(parameters, multiplier_a=multiplier_a)
+
+    assert configuration.multiplier_a == multiplier_a
+
+
+def test_configuration_multiplier_error_is_not_a_public_key_error(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    """a is a SETUP constant, not a public value."""
+    with pytest.raises(InvalidSetupConfiguration) as error:
+        build_configuration(parameters, multiplier_a=0)
+
+    assert not isinstance(error.value, InvalidPublicKey)
+
+
+@pytest.mark.parametrize("offset_b", [0, 1, 10, 11, -5, 100])
+def test_configuration_accepts_any_offset(
+    parameters: DiffieHellmanParameters,
+    offset_b: int,
+) -> None:
+    """No rule constrains b."""
+    configuration = build_configuration(parameters, offset_b=offset_b)
+
+    assert configuration.offset_b == offset_b
+
+
+@pytest.mark.parametrize("correction_w", [-1, -3, 25])
+def test_configuration_accepts_other_odd_corrections(
+    parameters: DiffieHellmanParameters,
+    correction_w: int,
+) -> None:
+    configuration = build_configuration(parameters, correction_w=correction_w)
+
+    assert configuration.correction_w == correction_w
+
+
+@pytest.mark.parametrize("correction_w", [-11, -33])
+def test_configuration_rejects_negative_correction_zero_modulo_q(
+    parameters: DiffieHellmanParameters,
+    correction_w: int,
+) -> None:
+    with pytest.raises(InvalidSetupConfiguration):
+        build_configuration(parameters, correction_w=correction_w)
+
+
+def test_configuration_errors_are_value_errors(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    with pytest.raises(ValueError):
+        build_configuration(parameters, correction_w=2)
+
+
+def test_configuration_is_slotted(parameters: DiffieHellmanParameters) -> None:
+    configuration = build_configuration(parameters)
+
+    assert not hasattr(configuration, "__dict__")
+
+
+def test_configurations_with_different_hash_are_not_equal(
+    parameters: DiffieHellmanParameters,
+) -> None:
+    configuration = build_configuration(parameters)
+    default_hash_configuration = YoungYungConfiguration(
+        parameters=parameters,
+        attacker_public_key=8,
+        multiplier_a=2,
+        offset_b=2,
+        correction_w=3,
+    )
+
+    assert configuration != default_hash_configuration

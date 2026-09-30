@@ -82,15 +82,15 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Streamlit shell: header, footer, home page, content composer | Done (issues #9, #10). Composer supports LaTeX. |
 | Hidden navigation (home ↔ sections, no sidebar) | Done. |
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
-| Kleptographic DH section in the UI | Placeholder card on the home page ("In research", disabled). |
-| Young–Yung DH SETUP (kleptographic DH) | **In progress.** Skeleton (`crypto/dh/setup/`, stubs raising `NotImplementedError`) and spec tests written; the maintainer implements it. The research issue is still pending (see 4.6). |
+| Kleptographic DH section in the UI | **Next objective.** Placeholder card on the home page ("In research", disabled). The model is ready for it (see 4.6, "Model for the UI"). |
+| Young–Yung DH SETUP (kleptographic DH) | Done (issue #4), fully tested. Research notes in `docs/young-yung-dh-setup.md`; its open questions (§10) still have to be checked against the paper (see 4.6). |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
 
 1. Mathematical and implementation foundations. **(done)**
 2. Reference DH construction. **(done)**, including its interactive section.
-3. Study and implement the Young–Yung construction.
+3. Study and implement the Young–Yung construction. **(done)**
 4. Interactive experiments around it, mirroring the honest DH section.
 5. Expose intermediate values and attacker knowledge.
 6. Document security assumptions and limitations.
@@ -101,11 +101,8 @@ Every case study follows the same page progression: mathematical background
 (both constructions under comparable conditions) → observation (what each
 participant can see) → analysis.
 
-Test suite: 412 tests. The 316 tests of the existing code pass. The 96 tests
-in `tests/crypto/dh/setup/` are the specification of the SETUP and fail with
-`NotImplementedError` until the maintainer implements the stubs, so
-`pytest` is expected to be red on those tests only. `crypto/` and `math/`
-are at about 100% coverage. On
+Test suite: 600 tests, all passing (284 of them in `tests/crypto/dh/setup/`).
+`crypto/` and `math/` are at 100% coverage. On
 the maintainer's request, the new UI modules (`navigation.py`,
 `components/navigation.py`, `components/protocol.py`,
 `content/diffie_hellman.py`, `content/numbers.py`, `pages/*`) **have no tests
@@ -242,8 +239,9 @@ tracing.context ── tracing.{events,observer}   (tracing never imports DH mod
 
 ### 4.4 `crypto.dh.tracing`
 
-- `Actor` (`StrEnum`): `SYSTEM`, `ALICE`, `BOB`. An attacker actor does not
-  exist yet; the SETUP work will need to add one.
+- `Actor` (`StrEnum`): `SYSTEM`, `ALICE`, `BOB`. There is no attacker
+  actor: SETUP internals are exposed through value objects instead (see
+  4.6).
 - `ProtocolEventType` (`StrEnum`) defines the semantic steps. The
   `MODULAR_EXPONENTIATION_{STARTED,STEP,COMPLETED}` types are defined but
   **never emitted yet**; they are reserved for step-by-step visualization
@@ -273,9 +271,9 @@ tracing.context ── tracing.{events,observer}   (tracing never imports DH mod
 - Events deliberately include private values, because showing them is the
   educational goal. Keep events presentation-agnostic: raw values only, no
   HTML or formatting. The UI is expected to render a DH walkthrough from
-  `ProtocolExecutionContext.events`. The observer pattern is the intended
-  mechanism for exposing kleptographic internals (SETUP state, attacker
-  recovery) as well.
+  `ProtocolExecutionContext.events`. Tracing is unchanged by the SETUP: a
+  device exchange emits exactly the same timeline as an honest one, which is
+  part of what the tests check.
 
 ### 4.5 `app` (Streamlit)
 
@@ -461,15 +459,16 @@ render_page_diffie_hellman()
 - UI text is English. Educational content is written as Python code using
   the composer, not as `.md` files.
 
-### 4.6 Kleptographic code (`crypto/dh/setup/`, skeleton only)
+### 4.6 Kleptographic code (`crypto/dh/setup/`)
 
-The maintainer chose the location `crypto/dh/setup/`. The package depends on
-the honest DH modules, and they never import it. **The maintainer implements
-the bodies themselves** as a learning exercise. Do not fill the
-`NotImplementedError` stubs unless a task explicitly asks for it. The
-equations in the docstrings come from the paper as summarized in the
-package docstring. They still have to be checked against the paper in a
-research issue (principle 7).
+The package depends on the honest DH modules, and they never import it
+(`tests/crypto/dh/setup/test_setup_isolation.py` checks this). The code was
+written by the maintainer and completed on request. **The `setup/` modules
+have no docstrings on purpose** (removed after serving as a guide; the code
+will be documented later). Keep plain `#` comments; do not add docstrings
+back unless a task asks for it. The mathematical explanation lives in
+`docs/young-yung-dh-setup.md` (Spanish research notes: equations, toy
+example, adaptation to the subgroup, open questions).
 
 ```text
 setup/
@@ -479,29 +478,88 @@ setup/
 ├── configuration.py # YoungYungConfiguration (frozen, kw_only): parameters,
 │                    # attacker_public_key (Y), multiplier_a, offset_b,
 │                    # correction_w (W, odd), hash_function
-├── construction.py  # pure equations: compute_z, derive_private_key (device),
+├── records.py       # SetupDerivation, SetupRecovery (frozen value objects)
+├── construction.py  # pure equations: compute_z, derive_setup,
+│                    # derive_private_key (device); compute_r,
 │                    # recover_z_candidates (attacker)
 ├── participant.py   # YoungYungDiffieHellmanParticipant(DiffieHellmanParticipant)
 └── attacker.py      # YoungYungAttacker(parameters, private_key X)
 ```
 
-- The compromised device **subclasses** the honest participant and overrides
-  only `_generate_private_key`: honest c1 when no key is stored, and
-  `derive_private_key(c1, t)` afterwards. It is therefore a drop-in argument
-  to `perform_key_exchange` (principle 2 is kept: separate class, no flag).
+Equations (group of prime order q, exponents reduced modulo q):
+
+```text
+device:   z = g^(c1 - W*t) * Y^(-a*c1 - b) mod p,   c2 = H(z)
+attacker: r = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   (mod p)
+          c2 = H(z1) if g^H(z1) == m2, else H(z2) if it matches, else error
+```
+
+- **`hash_to_exponent(z, *, parameters)`**: SHAKE-256 over the domain tag
+  `b"young-yung-setup-H"` followed by z encoded big-endian with the byte
+  length of p (fixed width, as I2OSP). The output has 8 extra bytes over q
+  and is reduced as `digest mod (q - 1) + 1`, so it lies in [1, q − 1] with a
+  bias below 2^-64. Raises `ValueError` unless `1 <= z < p`.
+- **`YoungYungConfiguration`** validates Y as a public value of its group
+  (`InvalidPublicKey`), and raises `InvalidSetupConfiguration` if
+  a ≡ 0 (mod q), W is even, or W ≡ 0 (mod q). In the prime-order subgroup,
+  "W odd" has no mathematical effect; it is kept for fidelity to the paper.
+- **`construction.py`**: division modulo p is done with `mod_inverse`, never
+  `/`. `derive_setup` returns a `SetupDerivation(previous_private_key,
+  correction_bit, z, private_key)`; `derive_private_key` returns only its
+  `private_key`. `compute_r(m1, *, configuration)` returns r (note that
+  r^X = Y^(a·c1 + b), the mask shared by device and attacker).
+- **Device** (`YoungYungDiffieHellmanParticipant(parameters,
+  configuration)`): raises `DiffieHellmanParametersMismatch` if the two groups
+  differ. It overrides `_generate_private_key`: an honest c1 when no key is
+  stored, and `derive_setup(c1, t)` afterwards. It is a drop-in argument to
+  `perform_key_exchange` (principle 2: separate class, no flag). Each later
+  `generate_keypair()` chains from the previous exponent (c3 from c2, …);
+  whether the paper specifies that is an open question.
   `super()` without arguments breaks in `slots=True` dataclasses on
-  Python < 3.14; call `DiffieHellmanParticipant._generate_private_key(self)`.
+  Python < 3.14, so parent methods are called explicitly
+  (`DiffieHellmanParticipant._generate_private_key(self)`).
 - The bit t is sampled in `_sample_correction_bit()`. Tests force it by
   monkeypatching that method **on the class**, because slotted instances
   reject instance attributes.
+- **Attacker** (`YoungYungAttacker(parameters, private_key)`, frozen):
+  `public_key`, `generate(parameters)`, `generate_configuration(*,
+  hash_function=hash_to_exponent)` (random a, b in [1, q − 1] and odd W in
+  [1, q − 2]; skips the degenerate a·X ≡ 1 (mod q), where z would not depend
+  on c1; raises `InvalidSetupConfiguration` if q < 3), `recover(...)`,
+  `recover_private_key(...)` and `recover_shared_secret(...)`. All recovery
+  methods take `first_public_key`, `second_public_key` and `configuration`
+  as keywords, raise `InvalidSetupConfiguration` if the configuration is for
+  another group or does not embed this attacker's Y, `InvalidPublicKey` for
+  invalid public values, and `SetupRecoveryError` if neither candidate
+  reproduces m2.
+- **Model for the UI.** SETUP internals happen outside `perform_key_exchange`
+  (the derivation runs in `generate_keypair()` before the second exchange,
+  and recovery is done by an outside party), and the device does not know
+  whether it plays Alice or Bob, so they are exposed as value objects
+  instead of tracing events:
+  - `device.last_derivation`: the `SetupDerivation` of the last SETUP
+    generation (c1, t, z, c2). `None` after an honest generation or
+    `load_private_key`. Hidden from `repr`.
+  - `attacker.recover(...)`: a `SetupRecovery(first_public_key,
+    second_public_key, r, z_candidates, private_key_candidates,
+    correction_bit, private_key)`. `correction_bit` is the t the attacker
+    infers (the first matching candidate).
+
+  Intended flow for the section: `attacker = YoungYungAttacker.generate(p)`
+  → `configuration = attacker.generate_configuration()` → `device =
+  YoungYungDiffieHellmanParticipant(p, configuration)` → exchange 1 with an
+  observer (c1 is traced as generated) → `device.generate_keypair()` and
+  read `device.last_derivation` → exchange 2 with an observer (c2 is traced
+  as provided) → `attacker.recover(...)` / `recover_shared_secret(...)` from
+  the `PUBLIC_KEY_SENT` values of both timelines.
 - Test vectors (toy group 23/2/11, X=3, Y=8, a=2, b=2, W=3,
   H(v)=v mod 10 + 1, c1=6, m1=18): t=0 → z=3, c2=4, m2=16; t=1 → z=9,
-  c2=10, m2=12. The honest peer b=7 (B=13) gives the secrets 18 and 16.
-- Open points for the research issue: the paper's group (Z_p^* of order p−1)
-  vs. the project's prime-order subgroup (the role of W being odd); the
-  concrete H and its encoding; the device's behaviour from the third
-  exchange onward (only exchanges 1–2 are specified by the tests); tracing
-  (an `ATTACKER` actor and SETUP events are not designed yet).
+  c2=10, m2=12. The attacker gets r=8 and candidates (3, 9) → (4, 10). The
+  honest peer b=7 (B=13) gives the secrets 18 and 16.
+- Open points (see §10 of the research notes): check the exact equations
+  against the paper; the motivation of a and b; the device's behaviour from
+  the third exchange onward; the weak/regular/strong classification and its
+  assumptions.
 
 Honest and kleptographic implementations must be directly comparable in
 tests and in the UI, including the fact that their outputs are
@@ -521,14 +579,16 @@ the affected code.
   with `"demonstrating..."` without a space.
 - Docstring style is mixed: Google style in `math/`, NumPy style in
   `crypto/dh/validation.py` and `participant.py`, and some modules
-  (`tracing/*`, `app/*`) have no module docstring.
+  (`tracing/*`, `app/*`) have no module docstring. `crypto/dh/setup/` has no
+  docstrings at all, on purpose (see 4.6).
 
 ## 6. Code conventions
 
 - **Imports are absolute from `kleptography.`**, never `src.kleptography.`.
   Importing the same file under both names creates two distinct classes and
   breaks test collection.
-- Start new modules with a docstring and `from __future__ import annotations`.
+- Start new modules with a docstring and `from __future__ import annotations`
+  (except in `crypto/dh/setup/`, which has no docstrings for now; see 4.6).
 - Use frozen, slotted dataclasses for value objects
   (`@dataclass(frozen=True, slots=True)`), validated in `__post_init__`.
 - Make functions that take several integers (`prime`, `generator`,
@@ -596,7 +656,9 @@ and `ty check` all pass. CI (`.github/workflows/ci.yml`) runs them on every
 push, with tests on Python 3.12, 3.13 and 3.14. Pre-commit runs Ruff and ty
 locally.
 
-Runtime dependencies: `streamlit`, `sympy` and `jinja2`. Dev dependencies:
+Runtime dependencies: `streamlit`, `sympy`, `jinja2` and `cryptography`
+(standard primitives such as SHA-2 or AES, e.g. for the SETUP's hash H;
+never reimplement a primitive it provides). Dev dependencies:
 `pytest`, `coverage`, `ruff`, `ty` and `pre-commit`. The build backend is
 `hatchling`. Add dependencies with `uv add <pkg>` (or `uv add --dev <pkg>`)
 and keep `uv.lock` committed. If code imports a package directly, declare
