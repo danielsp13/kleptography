@@ -76,14 +76,15 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Area | State |
 | --- | --- |
 | Math utilities (`math/`) | Done, fully tested. |
-| DH parameters, validation, RFC 7919 groups | Done (issue #8). |
-| Honest DH participant and protocol | Done (issue #8). Five-phase execution model; supports known (loaded) and generated keys. |
+| DH parameters, validation, RFC 7919 groups | Done. |
+| Honest DH participant and protocol | Done. Five-phase execution model; supports known (loaded) and generated keys. |
 | Protocol tracing (observer + event timeline) | Done. Consumed by the Diffie-Hellman section. |
-| Streamlit shell: header, footer, home page, content composer | Done (issues #9, #10). Composer supports LaTeX. |
+| Streamlit shell: header, footer, home page, content composer | Done. Composer supports LaTeX. |
 | Hidden navigation (home ↔ sections, no sidebar) | Done. |
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
-| Kleptographic DH section in the UI | **Next objective.** Placeholder card on the home page ("In research", disabled). The model is ready for it (see 4.6, "Model for the UI"). |
-| Young–Yung DH SETUP (kleptographic DH) | Done (issue #4), fully tested. Its open points still have to be checked against the paper (see 4.6). |
+| Young–Yung SETUP section (`/young-yung-setup`) | Done. Tabs: idea (SETUP, (1,2)-leakage), formulae (full derivation), experiment (two exchanges + attacker recovery, 8 steps). |
+| Young–Yung DH SETUP (kleptographic DH) | Done, fully tested. Its former open points are closed by the maintainer's decision (see 4.6). |
+| Encrypted channel on top of the SETUP (KDF + AES-256) | Idea only, sketched in `docs/future-setup-encrypted-channel.md`. Intended as a fourth tab of the SETUP section. |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
@@ -92,7 +93,8 @@ Roadmap, as stated on the home page (`app/content/home.py`):
 2. Reference DH construction. **(done)**, including its interactive section.
 3. Study and implement the Young–Yung construction. **(done)**
 4. Interactive experiments around it, mirroring the honest DH section.
-5. Expose intermediate values and attacker knowledge.
+   **(done)**
+5. Expose intermediate values and attacker knowledge. **(done for DH)**
 6. Document security assumptions and limitations.
 7. Apply the same methodology to other constructions.
 
@@ -104,9 +106,9 @@ participant can see) → analysis.
 Test suite: 600 tests, all passing (284 of them in `tests/crypto/dh/setup/`).
 `crypto/` and `math/` are at 100% coverage. On
 the maintainer's request, the new UI modules (`navigation.py`,
-`components/navigation.py`, `components/protocol.py`,
-`content/diffie_hellman.py`, `content/numbers.py`, `pages/*`) **have no tests
-yet. Do not add page or component tests unless a task asks for them.**
+`components/{navigation,protocol,controls,young_yung_setup}.py`,
+`content/{diffie_hellman,young_yung_setup,numbers}.py`, `pages/*`) **have no
+tests yet. Do not add page or component tests unless a task asks for them.**
 
 ## 4. Architecture and interrelations
 
@@ -128,10 +130,13 @@ src/kleptography/
 │       └── setup/           # KLEPTOGRAPHIC: Young–Yung SETUP on DH (see 4.6)
 └── app/                     # Streamlit presentation layer
     ├── main.py              # entry point: page config + hidden st.navigation
-    ├── navigation.py        # page registry: home_page(), diffie_hellman_page(), all_pages()
-    ├── pages/               # home.py, diffie_hellman.py
-    ├── components/          # header, footer, navigation (back link, section card), protocol
-    ├── content/             # composer, callouts, home, diffie_hellman, numbers
+    ├── navigation.py        # page registry: home_page(), diffie_hellman_page(),
+    │                        # young_yung_setup_page(), all_pages()
+    ├── pages/               # home.py, diffie_hellman.py, young_yung_setup.py
+    ├── components/          # header, footer, navigation (back link, section card),
+    │                        # controls (shared DH widgets), protocol, young_yung_setup
+    ├── content/             # composer, callouts, home, diffie_hellman,
+    │                        # young_yung_setup, numbers
     ├── html/                # templates/*.html, loader.py, renderer.py
     ├── css/                 # styles/{header,footer,protocol}.css, loader.py
     └── assets/              # logos/kleptofox.png, loader.py
@@ -287,7 +292,8 @@ imports `kleptography.*` as an installed package, which `uv sync` sets up.
 sidebar**: pages link to each other with `st.page_link`.
 
 - `app/navigation.py` defines one factory per page: `home_page()` (default,
-  URL `/`) and `diffie_hellman_page()` (URL `/diffie-hellman`). Streamlit
+  URL `/`), `diffie_hellman_page()` (URL `/diffie-hellman`) and
+  `young_yung_setup_page()` (URL `/young-yung-setup`). Streamlit
   identifies a page by its `url_path`, so a factory can be called wherever a
   link is needed.
 - Page modules import `navigation.py` to build links, so the factories
@@ -339,7 +345,7 @@ render_page_diffie_hellman()
    ├── render_component_back_home()
    ├── title + build_dh_intro_content()
    ├── number format control (Decimal / Hexadecimal)         key dh_number_format
-   ├── 1 · public parameters                                  key dh_group_kind
+   ├── 1 · public parameters (render_component_group_selection) key dh_group_kind
    │     toy:      number input 8–64 bits (dh_toy_bits) + "Generate a new group"
    │               → DiffieHellmanParameters.generate_toy(bits), kept in
    │                 session_state["dh_toy_parameters"] until bits change or regenerate
@@ -355,8 +361,9 @@ render_page_diffie_hellman()
    │     → session_state["dh_run"] = ExchangeRun(parameters, build_protocol_steps(events))
    │     → session_state["dh_revealed"] = 1; InvalidPrivateKey → st.error
    └── 4 · timeline: progress bar, steps[:revealed] via
-         render_component_protocol_step, then Next step / Show all steps /
-         Start over (on_click callbacks update dh_revealed). If the current
+         render_component_protocol_step, then render_component_step_navigation
+         (Next step / Show all steps / Start over; on_click callbacks update
+         dh_revealed; button keys dh_revealed_{next,all,restart}). If the current
          parameters differ from ExchangeRun.parameters, the run is stale:
          an info message replaces the timeline.
 ```
@@ -375,6 +382,15 @@ render_page_diffie_hellman()
   `b`/`B` for Bob, `s_A`/`s_B` for the secrets, and Eve for the
   eavesdropper. The module also provides the callout builders for toy
   groups, standard groups and the eavesdropper.
+- **`components/controls.py`** holds the widgets shared by the DH-based
+  sections, parametrized by the section's `key_prefix` (`dh`, `yy`), so keys
+  and session state never collide: `GroupKind`, `KeyMode`,
+  `STANDARD_GROUPS`, the toy bit limits (8–64, default 16),
+  `render_component_number_format(*, key_prefix)`,
+  `render_component_group_selection(*, key_prefix, number_format)` (toy or
+  RFC group, callouts, and p/g/q; the toy group is cached in
+  `<prefix>_toy_parameters`) and
+  `render_component_step_navigation(*, state_key, revealed, total)`.
 - **`content/numbers.py`**: `NumberFormat` (DECIMAL, HEXADECIMAL);
   `parse_integer(text)`; `is_small(*values)`.
   `format_integer(value, fmt, *, width_bits=None)` separates groups with
@@ -393,7 +409,8 @@ render_page_diffie_hellman()
   the parameter section and step 1.
   `render_component_value(label, value, *, visibility, number_format,
   width_bits=None)` renders a label, a `Visibility` badge
-  (Public / Private / Shared secret), the bit size, and an
+  (Public / Private / Shared secret, plus Hidden in the device and Attacker
+  only for the SETUP section), the bit size, and an
   `st.code(..., language="text", wrap_lines=True)` block. Blocks longer than
   400 characters get a fixed height and scroll vertically.
   `render_component_protocol_step(step, *, display)` draws a bordered
@@ -406,6 +423,61 @@ render_page_diffie_hellman()
   as a fallback), which keeps digit groups aligned. Do not use
   `break-all`: it splits groups and breaks the alignment. Long KaTeX
   display formulas scroll inside themselves.
+
+#### Young–Yung SETUP section (`pages/young_yung_setup.py`)
+
+Mirrors the DH section, told from the attacker's point of view. Session and
+widget keys use the `yy_` prefix.
+
+```text
+render_page_young_yung_setup()
+   ├── css + back link + title + build_setup_intro_content()
+   ├── st.tabs (stateless, all tabs render; widget state survives switching)
+   │   ├── "The idea":   build_setup_concept_content()   SETUP definition
+   │   │                 (paraphrased), public key vs naive backdoor, roles,
+   │   │                 (m, n)-leakage and why this one is (1,2), detection, stakes
+   │   ├── "Formulae":   build_setup_formulae_content()  notation, subgroup
+   │   │                 arithmetic, device/attacker algorithms, six-step proof of
+   │   │                 recovery, the hidden DH exchange (Y^(αa1+β) = r^X), why
+   │   │                 others cannot (CDH), (1,2)-leakage (why s1 is safe),
+   │   │                 worked example (test vectors, toy H flagged),
+   │   │                 implementation choices
+   │   └── "Experiment": _render_experiment()
+   │         number format + 1 · group (shared controls, prefix yy)
+   │         2 · backdoor: Backdoor(attacker, configuration) in
+   │             session_state["yy_backdoor"], regenerated when the group
+   │             changes or on "Generate a new backdoor"
+   │         3 · keys: Random | Chosen (a1, b1, b2 → ChosenKeys)
+   │         4 · run: _run_experiment() follows the 4.6 flow (device plays
+   │             Alice, a new honest Bob per exchange) → SetupRun in yy_run
+   │         timeline: 8 steps via render_component_setup_step, stale if the
+   │             group or configuration changed
+   └── footer
+```
+
+- **`content/young_yung_setup.py`**: the intro, concept and formulae
+  builders, `SETUP_STEP_DEFINITIONS` (8 `StepDefinition`s: parameters,
+  backdoor, exchange 1, derivation, exchange 2, transcript, recovery,
+  recovered secret), callouts (reverse engineer, Eve vs attacker,
+  (1,2)-leakage), `ExchangeSummary` + `summarize_exchange(events)` (reads the
+  device's and Bob's values from a timeline where the device is Alice), and
+  formula helpers (`power_formula`, `z_formula`, `hash_formula`,
+  `r_formula`, `z1_formula`, `z2_formula`) that substitute values only when
+  `is_small`. **UI notation is adapted to DH, not the paper's**: protocol
+  roles follow the honest section (device = Alice: `a1, a2` / `A1, A2`;
+  Bob: `b1, b2` / `B1, B2`; secrets `s1, s2`), the paper's constants `a, b`
+  become `α, β`, and the SETUP machinery keeps the paper's symbols
+  (`X, Y, W, t, H, z, r`). Attacker candidates are `â_i = H(z_i)`. The
+  formulae tab shows the correspondence table (paper `c_i, m_i, a, b`). The
+  `crypto` code and its comments and test vectors keep the paper's names
+  (`c1`, `m1`, `multiplier_a`, `offset_b`).
+- **`components/young_yung_setup.py`**: `SetupRun` (parameters, attacker,
+  configuration, both `ExchangeSummary`s, `SetupDerivation`,
+  `SetupRecovery`, recovered secret), `render_component_backdoor` and
+  `render_component_setup_step(number, run, *, display)`. The rejected
+  candidate's check is symbolic, since the app never exponentiates. If the
+  inferred t differs from the real one (both candidates hash to the same key
+  in a tiny group), the recovery step explains it.
 
 #### UX rules for interactive sections
 
@@ -462,11 +534,9 @@ render_page_diffie_hellman()
 ### 4.6 Kleptographic code (`crypto/dh/setup/`)
 
 The package depends on the honest DH modules, and they never import it
-(`tests/crypto/dh/setup/test_setup_isolation.py` checks this). The code was
-written by the maintainer and completed on request. **The `setup/` modules
-have no docstrings on purpose** (removed after serving as a guide; the code
-will be documented later). Keep plain `#` comments; do not add docstrings
-back unless a task asks for it.
+(`tests/crypto/dh/setup/test_setup_isolation.py` checks this). **The
+`setup/` modules have no docstrings on purpose.** Keep plain `#` comments;
+do not add docstrings unless a task asks for it.
 
 ```text
 setup/
@@ -511,8 +581,7 @@ attacker: r = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   (mod p)
   differ. It overrides `_generate_private_key`: an honest c1 when no key is
   stored, and `derive_setup(c1, t)` afterwards. It is a drop-in argument to
   `perform_key_exchange` (principle 2: separate class, no flag). Each later
-  `generate_keypair()` chains from the previous exponent (c3 from c2, …);
-  whether the paper specifies that is an open question.
+  `generate_keypair()` chains from the previous exponent (c3 from c2, …).
   `super()` without arguments breaks in `slots=True` dataclasses on
   Python < 3.14, so parent methods are called explicitly
   (`DiffieHellmanParticipant._generate_private_key(self)`).
@@ -554,10 +623,11 @@ attacker: r = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   (mod p)
   H(v)=v mod 10 + 1, c1=6, m1=18): t=0 → z=3, c2=4, m2=16; t=1 → z=9,
   c2=10, m2=12. The attacker gets r=8 and candidates (3, 9) → (4, 10). The
   honest peer b=7 (B=13) gives the secrets 18 and 16.
-- Open points: check the exact equations
-  against the paper; the motivation of a and b; the device's behaviour from
-  the third exchange onward; the weak/regular/strong classification and its
-  assumptions.
+- The former open points (exact equations, motivation of a and b, behaviour
+  from the third exchange onward, weak/regular/strong classification) are
+  **closed by the maintainer's decision**: do not reopen them or list them as
+  pending in the UI. The formulae tab presents the construction as a
+  (1,2)-leakage scheme and lists only implementation choices.
 
 Honest and kleptographic implementations must be directly comparable in
 tests and in the UI, including the fact that their outputs are
@@ -568,8 +638,12 @@ indistinguishable.
 Only fix these when the task asks for it, or when you are already editing
 the affected code.
 
-- The interactive section has not been reviewed visually in a browser by
-  an agent; only its rendering logic was exercised.
+- The interactive sections have not been reviewed visually in a browser by
+  an agent; they were only executed headless with `streamlit.testing`
+  (AppTest), without rendering KaTeX or Markdown tables.
+- The SETUP section does not yet show an honest device side by side with
+  the compromised one (4.6 asks for them to be directly comparable); it
+  states that the transcript passes the same validation instead.
 - The UI version `"1.0.0"` differs from `pyproject.toml` `0.1.0`, and the
   footer's documentation and license URLs point to the GitHub profile, not
   the repository.
@@ -586,7 +660,7 @@ the affected code.
   Importing the same file under both names creates two distinct classes and
   breaks test collection.
 - Start new modules with a docstring and `from __future__ import annotations`
-  (except in `crypto/dh/setup/`, which has no docstrings for now; see 4.6).
+  (except in `crypto/dh/setup/`, which has no docstrings; see 4.6).
 - Use frozen, slotted dataclasses for value objects
   (`@dataclass(frozen=True, slots=True)`), validated in `__post_init__`.
 - Make functions that take several integers (`prime`, `generator`,
@@ -668,9 +742,13 @@ environment.
 - **Never commit, push, or create branches, tags or PRs.** Leave all changes
   uncommitted in the working tree for the maintainer to review. This applies
   even when a task seems finished.
-- Work comes from GitHub issues (`danielsp13/kleptography`), referenced as
-  `#N`. Do the smallest change that satisfies the issue and follow existing
-  patterns before introducing new abstractions.
+- Work comes from GitHub issues (`danielsp13/kleptography`). Do the
+  smallest change that satisfies the issue and follow existing patterns
+  before introducing new abstractions.
+- **Never record issue numbers in `CLAUDE.md`**, even when the maintainer
+  mentions them in a task. Keep this file limited to the context needed to
+  work on the code: current state, architecture, conventions and commands,
+  not the history of how it got there.
 - When suggesting a commit message, use the project format:
   `<area>: <lowercase summary>[, closes #N | , #N]`. Areas in use: `crypto`,
   `crypto-dh`, `ui`, `ui-content`, `test`, `infra` (short for
