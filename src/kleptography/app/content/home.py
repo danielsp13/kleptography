@@ -158,8 +158,8 @@ def build_home_content() -> str:
 
     content.paragraph(
         content.bold("Implementation status:"),
-        " the honest Diffie-Hellman exchange is available as an interactive "
-        "section; the kleptographic construction has not been implemented yet.",
+        " the honest Diffie-Hellman exchange and the Young-Yung SETUP on it "
+        "are both available as interactive sections.",
     )
 
     content.divider()

@@ -35,7 +35,7 @@ def render_component_header() -> None:
             "Security",
         ],
         kleptographic_mechanisms=[
-            "Diffie-Hellman",
+            "Young–Yung SETUP on Diffie-Hellman",
         ],
     )
 

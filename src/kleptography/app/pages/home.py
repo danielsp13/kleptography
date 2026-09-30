@@ -8,7 +8,7 @@ from kleptography.app.components.navigation import (
 )
 from kleptography.app.content.callouts import CalloutComposer
 from kleptography.app.content.home import build_home_content
-from kleptography.app.navigation import diffie_hellman_page
+from kleptography.app.navigation import diffie_hellman_page, young_yung_setup_page
 
 
 def render_page_home() -> None:
@@ -50,10 +50,11 @@ def _render_sections() -> None:
                 description=(
                     "The same exchange with a hidden trapdoor that lets an "
                     "attacker recover the shared secret while every message "
-                    "still looks normal."
+                    "still looks normal. Learn the idea, follow the formulae, "
+                    "and take the attacker's seat."
                 ),
-                status="In research",
-                url_path=None,
+                status="Available",
+                url_path=young_yung_setup_page().url_path,
             ),
         ]
     )

@@ -243,9 +243,10 @@ def build_dh_intro_content() -> str:
     content.block(
         CalloutComposer.note(
             content=(
-                "The kleptographic (backdoored) version of this exchange is "
-                "not implemented yet. Understanding the honest version first "
-                "is what makes the backdoor visible later."
+                "The kleptographic (backdoored) version of this exchange has "
+                "its own section, the Young–Yung SETUP. Understanding the "
+                "honest version first is what makes the backdoor visible "
+                "there."
             ),
             title="Why start with the honest version?",
         )

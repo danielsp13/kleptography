@@ -40,6 +40,20 @@ def diffie_hellman_page() -> StreamlitPage:
     )
 
 
+def young_yung_setup_page() -> StreamlitPage:
+    """Return the Young–Yung SETUP section on Diffie-Hellman."""
+    from kleptography.app.pages.young_yung_setup import (
+        render_page_young_yung_setup,
+    )
+
+    return st.Page(
+        render_page_young_yung_setup,
+        title="Young–Yung SETUP · Kleptography",
+        icon="🕵️",
+        url_path="young-yung-setup",
+    )
+
+
 def all_pages() -> list[StreamlitPage]:
     """Return every page of the application, the default page first."""
-    return [home_page(), diffie_hellman_page()]
+    return [home_page(), diffie_hellman_page(), young_yung_setup_page()]

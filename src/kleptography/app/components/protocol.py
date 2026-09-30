@@ -35,12 +35,16 @@ class Visibility(StrEnum):
     PUBLIC = "public"
     PRIVATE = "private"
     SHARED_SECRET = "shared secret"
+    DEVICE = "hidden in the device"
+    ATTACKER = "attacker only"
 
 
 _BADGE = {
     Visibility.PUBLIC: ":blue-badge[:material/visibility: Public]",
     Visibility.PRIVATE: ":red-badge[:material/lock: Private]",
     Visibility.SHARED_SECRET: ":green-badge[:material/key: Shared secret]",
+    Visibility.DEVICE: ":orange-badge[:material/memory: Hidden in the device]",
+    Visibility.ATTACKER: ":violet-badge[:material/vpn_key: Attacker only]",
 }
 
 

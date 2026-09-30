@@ -8,17 +8,20 @@ the ``crypto`` API, runs ``perform_key_exchange`` with a
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from enum import StrEnum
 
 import streamlit as st
 
+from kleptography.app.components.controls import (
+    KeyMode,
+    render_component_group_selection,
+    render_component_number_format,
+    render_component_step_navigation,
+)
 from kleptography.app.components.footer import render_component_footer
 from kleptography.app.components.navigation import render_component_back_home
 from kleptography.app.components.protocol import (
     ValueDisplay,
-    render_component_parameters,
     render_component_protocol_step,
 )
 from kleptography.app.content.callouts import CalloutComposer
@@ -26,55 +29,20 @@ from kleptography.app.content.diffie_hellman import (
     ProtocolStep,
     build_dh_intro_content,
     build_protocol_steps,
-    build_standard_group_content,
-    build_toy_group_content,
 )
 from kleptography.app.content.numbers import NumberFormat, parse_integer
 from kleptography.app.css.loader import load_css
 from kleptography.app.html.renderer import render_html
 from kleptography.crypto.dh.exceptions import InvalidPrivateKey
-from kleptography.crypto.dh.groups.rfc7919 import (
-    ffdhe2048,
-    ffdhe3072,
-    ffdhe4096,
-    ffdhe6144,
-    ffdhe8192,
-)
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.participant import DiffieHellmanParticipant
 from kleptography.crypto.dh.protocol import perform_key_exchange
 from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
 
-TOY_BITS_MIN = 8
-TOY_BITS_MAX = 64
-TOY_BITS_DEFAULT = 16
-
-STANDARD_GROUPS: dict[str, Callable[[], DiffieHellmanParameters]] = {
-    "FFDHE2048": ffdhe2048,
-    "FFDHE3072": ffdhe3072,
-    "FFDHE4096": ffdhe4096,
-    "FFDHE6144": ffdhe6144,
-    "FFDHE8192": ffdhe8192,
-}
-
-# Session state keys.
-_TOY_PARAMETERS = "dh_toy_parameters"
+# Widget and session state prefix, and session state keys.
+_PREFIX = "dh"
 _RUN = "dh_run"
 _REVEALED = "dh_revealed"
-
-
-class GroupKind(StrEnum):
-    """Origin of the domain parameters."""
-
-    TOY = "Toy group"
-    STANDARD = "Standardized group (RFC 7919)"
-
-
-class KeyMode(StrEnum):
-    """How private keys are chosen."""
-
-    RANDOM = "Random"
-    CHOSEN = "Chosen by me"
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +64,7 @@ def render_page_diffie_hellman() -> None:
     st.markdown(build_dh_intro_content(), unsafe_allow_html=True)
 
     st.divider()
-    number_format = _render_number_format()
+    number_format = render_component_number_format(key_prefix=_PREFIX)
     parameters = _render_parameters_section(number_format)
 
     st.divider()
@@ -109,82 +77,11 @@ def render_page_diffie_hellman() -> None:
     render_component_footer()
 
 
-def _render_number_format() -> NumberFormat:
-    selected = st.segmented_control(
-        "Show numbers in",
-        options=list(NumberFormat),
-        format_func=lambda option: option.value.capitalize(),
-        default=NumberFormat.DECIMAL,
-        required=True,
-        key="dh_number_format",
-        help="Hexadecimal is the notation used by standards such as RFC 7919.",
-    )
-    return NumberFormat(selected)
-
-
 def _render_parameters_section(number_format: NumberFormat) -> DiffieHellmanParameters:
     st.header("1 · Choose the public parameters")
-
-    kind = GroupKind(
-        st.segmented_control(
-            "Group",
-            options=list(GroupKind),
-            default=GroupKind.TOY,
-            required=True,
-            key="dh_group_kind",
-        )
+    return render_component_group_selection(
+        key_prefix=_PREFIX, number_format=number_format
     )
-
-    if kind is GroupKind.TOY:
-        st.markdown(build_toy_group_content(), unsafe_allow_html=True)
-        parameters = _render_toy_group_controls()
-    else:
-        st.markdown(build_standard_group_content(), unsafe_allow_html=True)
-        name = st.selectbox("Group", options=list(STANDARD_GROUPS), key="dh_group")
-        parameters = STANDARD_GROUPS[name]()
-
-    st.markdown(
-        f"The selected group has a **{parameters.bit_length}-bit** prime. "
-        "Anyone may know these values:"
-    )
-    render_component_parameters(
-        prime=parameters.prime,
-        generator=parameters.generator,
-        subgroup_order=parameters.subgroup_order,
-        display=ValueDisplay(number_format, parameters.bit_length),
-    )
-
-    return parameters
-
-
-def _render_toy_group_controls() -> DiffieHellmanParameters:
-    bits = int(
-        st.number_input(
-            "Size of the prime $p$ (bits)",
-            min_value=TOY_BITS_MIN,
-            max_value=TOY_BITS_MAX,
-            value=TOY_BITS_DEFAULT,
-            step=1,
-            key="dh_toy_bits",
-            help=(
-                f"Between {TOY_BITS_MIN} and {TOY_BITS_MAX} bits. Larger primes "
-                "are more realistic but harder to follow."
-            ),
-        )
-    )
-
-    parameters: DiffieHellmanParameters | None = st.session_state.get(_TOY_PARAMETERS)
-    regenerate = st.button(
-        "Generate a new group",
-        icon=":material/casino:",
-        help="Pick a new random safe prime of the selected size.",
-    )
-
-    if regenerate or parameters is None or parameters.bit_length != bits:
-        parameters = DiffieHellmanParameters.generate_toy(bits=bits)
-        st.session_state[_TOY_PARAMETERS] = parameters
-
-    return parameters
 
 
 def _render_private_keys_section(
@@ -301,32 +198,6 @@ def _render_timeline_section(
     for step in run.steps[:revealed]:
         render_component_protocol_step(step, display=display)
 
-    next_column, all_column, restart_column = st.columns(3)
-    next_column.button(
-        "Next step",
-        icon=":material/arrow_downward:",
-        type="primary",
-        disabled=revealed >= total,
-        on_click=_reveal,
-        args=(revealed + 1,),
-        width="stretch",
+    render_component_step_navigation(
+        state_key=_REVEALED, revealed=revealed, total=total
     )
-    all_column.button(
-        "Show all steps",
-        icon=":material/unfold_more:",
-        disabled=revealed >= total,
-        on_click=_reveal,
-        args=(total,),
-        width="stretch",
-    )
-    restart_column.button(
-        "Start over",
-        icon=":material/restart_alt:",
-        on_click=_reveal,
-        args=(1,),
-        width="stretch",
-    )
-
-
-def _reveal(count: int) -> None:
-    st.session_state[_REVEALED] = count
