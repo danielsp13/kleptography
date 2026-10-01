@@ -84,7 +84,7 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
 | Young–Yung SETUP section (`/young-yung-setup`) | Done. Tabs: idea (SETUP, (1,2)-leakage), formulae (full derivation), experiment (two exchanges + attacker recovery, 8 steps). |
 | Young–Yung DH SETUP (kleptographic DH) | Done, fully tested. Its former open points are closed by the maintainer's decision (see 4.6). |
-| Encrypted channel compromised by the SETUP (DH + KDF + AES-256-GCM) | Designed, not implemented (see 4.7). Intended as a fourth tab of the SETUP section. |
+| Encrypted channel compromised by the SETUP (DH + KDF + AES-256-GCM) | Crypto done, fully tested (see 4.7): AEAD, KDF, channel and channel attacker. UI pending: intended as a fourth tab of the SETUP section. |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
@@ -103,7 +103,9 @@ Every case study follows the same page progression: mathematical background
 (both constructions under comparable conditions) → observation (what each
 participant can see) → analysis.
 
-Test suite: 600 tests, all passing (284 of them in `tests/crypto/dh/setup/`).
+Test suite: 826 tests, all passing (289 of them in `tests/crypto/dh/setup/`,
+50 in `tests/crypto/aead/`, 43 in `tests/crypto/kdf/`, 71 in
+`tests/crypto/channel/` and 54 in `tests/crypto/channel/setup/`).
 `crypto/` and `math/` are at 100% coverage. On
 the maintainer's request, the new UI modules (`navigation.py`,
 `components/{navigation,protocol,controls,young_yung_setup}.py`,
@@ -128,10 +130,10 @@ src/kleptography/
 │   │   ├── tracing/         # events.py, observer.py, context.py
 │   │   ├── groups/rfc7919/  # ffdhe2048() … ffdhe8192()
 │   │   └── setup/           # KLEPTOGRAPHIC: Young–Yung SETUP on DH (see 4.6)
-│   ├── kdf/                 # PLANNED (4.7): one-step KDF, SHA-256
-│   ├── aead/                # PLANNED (4.7): AES-256-GCM
-│   └── channel/             # PLANNED (4.7): DH + KDF + AEAD sessions
-│       └── setup/           # PLANNED, KLEPTOGRAPHIC: attacker reading the channel
+│   ├── kdf/                 # one-step KDF (SP 800-56C), SHA-256: derive_key (4.7)
+│   ├── aead/                # AES-256-GCM: encrypt/decrypt, EncryptedMessage (4.7)
+│   └── channel/             # ephemeral DH + KDF + AEAD sessions: run_channel (4.7)
+│       └── setup/           # KLEPTOGRAPHIC: intercept_channel, the attacker (4.7)
 └── app/                     # Streamlit presentation layer
     ├── main.py              # entry point: page config + hidden st.navigation
     ├── navigation.py        # page registry: home_page(), diffie_hellman_page(),
@@ -186,7 +188,8 @@ tracing.context ── tracing.{events,observer}   (tracing never imports DH mod
   `validate_parameters`, so every instance satisfies
   `p > 2`, `q > 1`, `1 < g < p`, `p == 2q + 1` and `g^q ≡ 1 (mod p)`.
   Only safe-prime groups are supported.
-  - `.bit_length` is the bit length of `p`.
+  - `.bit_length` is the bit length of `p`; `.byte_length` is
+    `ceil(bit_length / 8)`, the fixed width used to encode values mod p.
   - `generate_toy(bits=32)` returns random, **insecure** parameters for
     demos and tests.
   - `from_standard(*, prime, generator, subgroup_order)` is the entry point
@@ -608,9 +611,13 @@ attacker: r = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   (mod p)
   and recovery is done by an outside party), and the device does not know
   whether it plays Alice or Bob, so they are exposed as value objects
   instead of tracing events:
-  - `device.last_derivation`: the `SetupDerivation` of the last SETUP
-    generation (c1, t, z, c2). `None` after an honest generation or
-    `load_private_key`. Hidden from `repr`.
+  - `device.derivations`: a tuple snapshot of every `SetupDerivation`
+    (c_{i-1}, t, z, c_i) of the current chain, in order. An honest generation
+    or `load_private_key` starts a new chain and empties it. In the channel
+    (4.7), session i ≥ 2 matches `derivations[i - 2]`, so one `run_channel`
+    call is enough for the UI to show every derivation. Hidden from `repr`.
+  - `device.last_derivation`: `derivations[-1]`, or `None` when the chain
+    has no SETUP generation yet.
   - `attacker.recover(...)`: a `SetupRecovery(first_public_key,
     second_public_key, r, z_candidates, private_key_candidates,
     correction_bit, private_key)`. `correction_bit` is the t the attacker
@@ -637,19 +644,20 @@ Honest and kleptographic implementations must be directly comparable in
 tests and in the UI, including the fact that their outputs are
 indistinguishable.
 
-### 4.7 Encrypted channel compromised by the SETUP (planned)
+### 4.7 Encrypted channel compromised by the SETUP
 
-Status: **design only, nothing implemented.** It extends the Young–Yung case
+Status: **`crypto` done (AEAD, KDF, channel and attacker); UI pending.**
+It extends the Young–Yung case
 study from the key exchange to a complete cryptosystem, to show that a
 malicious key establishment compromises the whole channel without breaking
 any cipher.
 
 **Model.** Alice (the compromised device) and Bob (honest) run N sessions in
-a row (2 ≤ N ≤ 5). Each session is one DH exchange, a session key
-`K_i = KDF(s_i)`, and short ASCII messages in both directions encrypted under
-`K_i`. The attacker knows the whole system (Kerckhoffs) and holds only X and
+a row (2 ≤ N ≤ 5, enforced by the UI; `crypto` accepts N ≥ 1). Each session
+is one ephemeral DH exchange, a session key `K_i = KDF(s_i)`, and short
+ASCII messages in both directions encrypted under `K_i`. The attacker knows the whole system (Kerckhoffs) and holds only X and
 the configuration. From the public transcript, each consecutive pair
-`(A_{i-1}, A_i)` gives `a_i` (the existing `recover_shared_secret`), so the
+`(A_{i-1}, A_i)` gives `a_i` (the existing `recover`), so the
 attacker decrypts sessions 2…N. **Session 1 stays confidential**: it is the
 (1,2)-leakage made visible at the application level. Eve, with the same
 transcript and no X, reads nothing.
@@ -661,11 +669,43 @@ transcript and no X, reads nothing.
   `Z` is the shared secret big-endian with the byte length of p (fixed width,
   as I2OSP, like the SETUP's H). `OtherInfo` is a fixed label. No salt and
   no randomness: the key is a deterministic function of the shared secret,
-  which is exactly what the attacker exploits.
+  which is exactly what the attacker exploits. **Done**:
+  - `records.py`: `KEY_SIZE = 32` and the frozen `KeyDerivation(shared_secret,
+    encoded_secret, other_info, key)`, which exposes every intermediate value
+    for the UI. It checks that `encoded_secret` encodes `shared_secret` and
+    that the key is 32 `bytes` (`InvalidKeyDerivation`). The secret, `Z` and
+    the key are hidden from `repr`.
+  - `one_step.py`: `OTHER_INFO = b"kleptography-encrypted-channel"` and
+    `derive_key(shared_secret, *, secret_length) -> KeyDerivation`. The
+    caller passes the byte length of p as `secret_length`, so `kdf` never
+    sees DH parameters. It raises `InvalidKdfInput` unless both arguments
+    are integers (not `bool`), `secret_length >= 1` and
+    `1 <= shared_secret < 256^secret_length`.
+  - `exceptions.py`: `KdfError` (independent of the DH and AEAD hierarchies),
+    `InvalidKdfInput` and `InvalidKeyDerivation`, both also `ValueError`.
+  - Tests recompute every key with `hashlib`
+    (`SHA-256(0x00000001 ‖ Z ‖ OtherInfo)`), pin one vector (toy secret 6,
+    1 byte), and include an isolation test (`kdf` imports only itself).
 - **AEAD** (`crypto/aead/`): AES-256-GCM, 96-bit nonce from `secrets`, 128-bit
   tag, no associated data. The nonce is random but public: it travels with
   the ciphertext, so it adds no secret. A wrong key fails the tag check,
-  which is how "the attacker cannot read session 1" shows up.
+  which is how "the attacker cannot read session 1" shows up. **Done**:
+  - `records.py`: `NONCE_SIZE = 12`, `TAG_SIZE = 16` and the frozen
+    `EncryptedMessage(nonce, ciphertext, tag)`, all public. It validates the
+    nonce and tag sizes (`InvalidAeadNonce`, `InvalidAeadTag`; `bytes` only).
+    The ciphertext is as long as the plaintext, and the tag is kept apart
+    (the library returns `ciphertext ‖ tag`) so the UI can show each field.
+  - `aes_gcm.py`: `KEY_SIZE = 32`, `generate_nonce()` (`secrets.token_bytes`),
+    `encrypt(key, plaintext, *, nonce=None)` and `decrypt(key, message)`.
+    Only 32-byte keys are accepted (`InvalidAeadKey`, even for valid AES-128
+    or AES-192 sizes). The `nonce` argument exists for test vectors and
+    reproducible demos; reusing it under one key is insecure. Any tag
+    failure (wrong key or tampering) raises `AeadAuthenticationError`,
+    chained from the library's `InvalidTag`.
+  - `exceptions.py`: `AeadError` (independent of `DiffieHellmanError`) and the
+    four errors above, all also `ValueError`.
+  - Tests use test cases 13–15 of McGrew–Viega's GCM specification and an
+    isolation test (`aead` imports only itself).
 - Both packages take integers or bytes and **never import `dh`**, so they can
   be reused by future targets (RSA, ML-DSA).
 
@@ -673,23 +713,105 @@ transcript and no X, reads nothing.
 `channel/setup → channel → {dh, dh/setup only in channel/setup, kdf, aead}`):
 
 ```text
-crypto/kdf/        exceptions.py, one_step.py (derive_key → KeyDerivation record)
+crypto/kdf/        exceptions.py, one_step.py (derive_key), records.py
+                   (KeyDerivation: shared_secret, encoded_secret, other_info, key)
 crypto/aead/       exceptions.py, aes_gcm.py (encrypt/decrypt), records.py
                    (EncryptedMessage: nonce, ciphertext, tag)
 crypto/channel/    exceptions.py, records.py (session and transcript value
-                   objects), session.py (one session), protocol.py (N sessions)
-crypto/channel/setup/  attacker.py: transcript + YoungYungAttacker +
-                   configuration → decrypted sessions 2…N, session 1 marked
-                   as not recoverable
+                   objects), session.py (run_session), protocol.py (run_channel)
+crypto/channel/setup/  exceptions.py, records.py (InterceptionOutcome,
+                   InterceptedMessage, InterceptedSession, ChannelInterception),
+                   attacker.py (intercept_channel)
 ```
 
-- The honest channel works with `DiffieHellmanParticipant` and is unaware of
-  the SETUP. The device is a drop-in replacement (principle 2): before every
-  session the channel calls `generate_keypair()` on both participants
-  (ephemeral DH), and the device's override is what chains the exponents.
-- `channel/setup/` is the only new kleptographic code. It has no symmetric
-  code of its own: it reuses `recover_shared_secret`, `kdf` and `aead`. It
-  follows the `dh/setup/` rules (no docstrings, isolation test).
+- **One channel, no SETUP variant.** `crypto/channel/` is the ordinary
+  protocol: its code holds no kleptographic logic and works with any
+  `DiffieHellmanParticipant`. It is *not* an "honest-only" channel: the case
+  study runs it with the device as Alice,
+  `run_channel(device, DiffieHellmanParticipant(parameters), sessions)`. The
+  device is a drop-in replacement (principle 2): before every session the
+  channel calls `generate_keypair()` on both participants (ephemeral DH), and
+  the device's override is what chains the exponents. Never add a SETUP
+  copy of the channel or a flag; the only kleptographic code is the attacker
+  in `channel/setup/`. Whether the UI also shows an honest Alice for
+  comparison is a UI decision.
+- **Channel (done)**:
+  - `records.py` has two views of the same communication.
+    - **Input**: `PlainMessage(sender, text)`, where `sender` is
+      `Actor.ALICE` or `Actor.BOB` from `dh.tracing` (the recipient is the
+      other one). `text` is printable ASCII (`isascii() and isprintable()`:
+      no newlines or tabs) of 1 to `MAX_MESSAGE_LENGTH = 140` characters.
+      Otherwise it raises `InvalidChannelMessage`, as does any sender that
+      is not one of those two `Actor` members.
+    - **Private view**: `ChannelMessage(sender, plaintext, encrypted,
+      received_plaintext)` with `.delivered`; `ChannelSession(number,
+      events, alice_public_key, bob_public_key, alice_key_derivation,
+      bob_key_derivation, messages)` with `.keys_match` (`events` hidden
+      from `repr`); `ChannelRun(parameters, sessions)`.
+    - **Public view**, built by the `.transcript` property of each private
+      record: `TranscriptMessage(sender, encrypted)`,
+      `SessionTranscript(number, alice_public_key, bob_public_key,
+      messages)` and `ChannelTranscript(parameters, sessions)`. This is all
+      Eve and the attacker see.
+    - Session numbers start at 1. Runs and transcripts need at least one
+      session, numbered 1, 2, … in order (`InvalidChannelSessions`).
+  - `session.py`: `run_session(alice, bob, messages, *, number)`.
+    1. Checks that both groups match (`DiffieHellmanParametersMismatch`,
+       before any key is generated).
+    2. **Always** calls `generate_keypair()` on Alice, then Bob, replacing
+       any loaded key: ephemeral DH, so chosen keys are not supported. The
+       timeline therefore traces both keys as `PRIVATE_KEY_PROVIDED`.
+    3. Runs `perform_key_exchange` with its own `ProtocolExecutionContext`.
+    4. Each party runs `derive_key(own secret,
+       secret_length=parameters.byte_length)`.
+    5. Each message is encrypted with a random nonce under the sender's key
+       and decrypted under the recipient's key.
+  - `protocol.py`: `run_channel(alice, bob, sessions)` runs one session per
+    entry (a sequence of `PlainMessage`s, possibly empty), numbered from 1.
+    It raises `InvalidChannelSessions` if `sessions` is empty and checks the
+    groups before running any session.
+  - `exceptions.py`: `ChannelError` (independent of the DH, KDF and AEAD
+    hierarchies), `InvalidChannelMessage` and `InvalidChannelSessions`, both
+    also `ValueError`. DH errors propagate unwrapped.
+  - Tests fix private keys by monkeypatching
+    `DiffieHellmanParticipant._generate_private_key` **on the class** with an
+    iterator, which also fixes the device's honest c1. The isolation test
+    allows only `channel`, `dh`, `kdf` and `aead` imports, and never
+    `dh.setup` or `channel.setup`. The device is used only in tests.
+- **Attacker (done)**, `channel/setup/`: the only kleptographic code of the
+  channel. It follows the `dh/setup/` rules (no docstrings, isolation test)
+  and has no symmetric code of its own.
+  - `attacker.py`: `intercept_channel(transcript, *, attacker,
+    configuration) -> ChannelInterception`. It takes only the public
+    `ChannelTranscript`. It first raises `InvalidSetupConfiguration` if the
+    configuration does not embed this attacker's Y or group, and
+    `DiffieHellmanParametersMismatch` if the transcript uses another group,
+    whatever the number of sessions. Session 1 is `NOT_RECOVERABLE`. For
+    each i ≥ 2 it validates `B_i` (`InvalidPublicKey`), runs
+    `attacker.recover(A_{i-1}, A_i)` (not `recover_shared_secret`, to keep
+    the `SetupRecovery` for the UI), computes `s_i = B_i^{a_i}`,
+    `derive_key(s_i, secret_length=parameters.byte_length)` and decrypts
+    every message. A `SetupRecoveryError` (e.g. honest Alice) becomes
+    `RECOVERY_FAILED`, never an exception, so the UI can apply the same
+    attacker to an honest channel. A message whose GCM tag fails (only a
+    tampered ciphertext: a matching candidate is `a_i` itself) gets
+    `plaintext=None`.
+  - `records.py`: `InterceptionOutcome` (`StrEnum`: `NOT_RECOVERABLE`,
+    `RECOVERY_FAILED`, `RECOVERED`); `InterceptedMessage(transcript,
+    plaintext)` with `.sender`, `.encrypted`, `.readable`;
+    `InterceptedSession(transcript, outcome, recovery, shared_secret,
+    key_derivation, messages)` with `.number`, `.recovered`, `.readable`;
+    `ChannelInterception(parameters, sessions)`. Invariants
+    (`InvalidChannelInterception`): only session 1, and always session 1,
+    is `NOT_RECOVERABLE`; messages wrap exactly the transcript's; a
+    recovered session has its recovery (targeting `A_i`), secret and key
+    (derived from that secret); any other session reveals nothing.
+  - `exceptions.py`: `InvalidChannelInterception(ChannelError, ValueError)`.
+  - In a toy group an honest `a_i` can equal a SETUP candidate by chance
+    (about 2/q), and the attacker then really reads that session; a test
+    pins this (q = 11, keys 6 → 10).
+  - For comparison with the device's truth, session i ≥ 2 matches
+    `device.derivations[i - 2]` (4.6).
 - **Didactic model**: like 4.6, no new tracing events. Every intermediate
   value (Z bytes, key, nonce, ciphertext, tag, recovered secret) is exposed
   through frozen value objects, so the UI can show each step. Each session's
@@ -703,11 +825,12 @@ crypto/channel/setup/  attacker.py: transcript + YoungYungAttacker +
 **Tests** (mirroring the tree, unique basenames such as
 `test_kdf_one_step.py`, `test_aead_aes_gcm.py`, `test_channel_session.py`,
 `test_channel_attacker.py`): KDF vectors computed independently with
-`hashlib`, GCM round trip and tamper/wrong-key failure, honest channel
-(Bob decrypts everything, with honest and device participants), attacker
+`hashlib`, GCM round trip and tamper/wrong-key failure, channel (Bob
+decrypts everything, with honest and device participants), attacker
 decrypts sessions 2…N and fails on session 1, device transcripts pass the
 same validation as honest ones, and isolation (`kdf`/`aead` never import
-`dh`; `channel` never imports `channel.setup` or `dh.setup`).
+`dh`; `channel` never imports `channel.setup` or `dh.setup`; `channel.setup`
+imports only `channel`, `dh`, `kdf`, `aead` and `math`).
 
 **UI** (later): fourth tab "Encrypted channel" in `/young-yung-setup`,
 `content/encrypted_channel.py` and `components/encrypted_channel.py`; one
