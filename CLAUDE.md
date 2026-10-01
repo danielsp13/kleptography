@@ -731,7 +731,8 @@ timeline steps.
   and the header and footer import it. Other header and footer metadata
   (release date, author, links, and the `kleptographic_mechanisms` list) is
   **hardcoded** in `components/*.py`. The footer links point to the
-  repository (documentation too) and to its `LICENSE`. Header pills stay short: `kleptographic_mechanisms`
+  repository, to `docs/` on `main` (`.../tree/main/docs`) and to its
+  `LICENSE`. Header pills stay short: `kleptographic_mechanisms`
   names the targeted cryptosystem (`"Diffie-Hellman"` covers the SETUP and
   the encrypted channel), not each section. Add an entry only for a new
   target (e.g. RSA).
@@ -1048,6 +1049,40 @@ imports only `channel`, `dh`, `kdf`, `aead` and `math`).
 
 **UI**: its own page `/encrypted-channel`, not a tab of the SETUP section
 (see 4.5, "Encrypted channel section").
+
+### 4.8 Developer documentation (`docs/`)
+
+Markdown only (no site generator), in English, linked from the README
+("Documentation" section) and the footer.
+
+```text
+docs/
+├── README.md        index, reading paths, how to regenerate diagrams
+├── architecture.md  layers, dependency table, isolation tests, conventions
+├── math.md · dh.md · setup.md · primitives.md · channel.md · app.md
+└── images/
+    ├── kleptofox.png                      (README logo)
+    └── diagrams/<name>.svg + <name>.png   architecture, dh-exchange,
+                                           setup-chain, channel-session
+```
+
+- Pages describe the `crypto` and `math` API (purpose, usage, reference,
+  errors, limitations); `app.md` only explains how sections use the API,
+  not the visual design. `channel.md` documents `channel/setup/` briefly
+  and points to its source and tests, without a step-by-step walkthrough or
+  a diagram.
+- Every ```` ```python ```` block is runnable and uses the toy group
+  23/2/11 (random toy groups only where noted). Ruff formats these blocks
+  (`ruff format --check .` covers `docs/`). Illustrative, non-runnable
+  snippets use ```` ```py ````.
+- Diagrams are hand-written SVG (the source) exported to PNG at 2x with
+  headless Chrome (command in `docs/README.md`; `--window-size` = SVG
+  size). Code text uses `white-space: pre`, since Chrome collapses spaces in
+  SVG text. Keep the shared style: honest blue, kleptographic red, public
+  orange, external dashed; toy values in green.
+- Every value in pages and diagrams was produced by running the code.
+  **When an API, a value object or an equation changes, update the
+  matching page and diagram in the same change.**
 
 ## 5. Known limitations
 
