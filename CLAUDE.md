@@ -84,7 +84,7 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
 | Young–Yung SETUP section (`/young-yung-setup`) | Done. Tabs: idea (SETUP, (1,2)-leakage), formulae (full derivation), experiment (two exchanges + attacker recovery, 8 steps). |
 | Young–Yung DH SETUP (kleptographic DH) | Done, fully tested. Its former open points are closed by the maintainer's decision (see 4.6). |
-| Encrypted channel on top of the SETUP (KDF + AES-256) | Idea only, sketched in `docs/future-setup-encrypted-channel.md`. Intended as a fourth tab of the SETUP section. |
+| Encrypted channel compromised by the SETUP (DH + KDF + AES-256-GCM) | Designed, not implemented (see 4.7). Intended as a fourth tab of the SETUP section. |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
@@ -118,16 +118,20 @@ src/kleptography/
 │   ├── modular.py           # mod_pow, mod_inverse, is_coprime
 │   └── primes.py            # generate_safe_prime, generate_subgroup_generator (sympy)
 ├── crypto/                  # schemes; never imports streamlit or app
-│   └── dh/                  # honest finite-field Diffie-Hellman
-│       ├── exceptions.py    # DiffieHellmanError hierarchy (leaf, imports nothing)
-│       ├── validation.py    # validate_parameters/_private_key/_public_key
-│       ├── parameters.py    # DiffieHellmanParameters
-│       ├── participant.py   # DiffieHellmanParticipant
-│       ├── exchange.py      # DiffieHellmanExchangeResult
-│       ├── protocol.py      # perform_key_exchange
-│       ├── tracing/         # events.py, observer.py, context.py
-│       ├── groups/rfc7919/  # ffdhe2048() … ffdhe8192()
-│       └── setup/           # KLEPTOGRAPHIC: Young–Yung SETUP on DH (see 4.6)
+│   ├── dh/                  # honest finite-field Diffie-Hellman
+│   │   ├── exceptions.py    # DiffieHellmanError hierarchy (leaf, imports nothing)
+│   │   ├── validation.py    # validate_parameters/_private_key/_public_key
+│   │   ├── parameters.py    # DiffieHellmanParameters
+│   │   ├── participant.py   # DiffieHellmanParticipant
+│   │   ├── exchange.py      # DiffieHellmanExchangeResult
+│   │   ├── protocol.py      # perform_key_exchange
+│   │   ├── tracing/         # events.py, observer.py, context.py
+│   │   ├── groups/rfc7919/  # ffdhe2048() … ffdhe8192()
+│   │   └── setup/           # KLEPTOGRAPHIC: Young–Yung SETUP on DH (see 4.6)
+│   ├── kdf/                 # PLANNED (4.7): one-step KDF, SHA-256
+│   ├── aead/                # PLANNED (4.7): AES-256-GCM
+│   └── channel/             # PLANNED (4.7): DH + KDF + AEAD sessions
+│       └── setup/           # PLANNED, KLEPTOGRAPHIC: attacker reading the channel
 └── app/                     # Streamlit presentation layer
     ├── main.py              # entry point: page config + hidden st.navigation
     ├── navigation.py        # page registry: home_page(), diffie_hellman_page(),
@@ -632,6 +636,82 @@ attacker: r = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   (mod p)
 Honest and kleptographic implementations must be directly comparable in
 tests and in the UI, including the fact that their outputs are
 indistinguishable.
+
+### 4.7 Encrypted channel compromised by the SETUP (planned)
+
+Status: **design only, nothing implemented.** It extends the Young–Yung case
+study from the key exchange to a complete cryptosystem, to show that a
+malicious key establishment compromises the whole channel without breaking
+any cipher.
+
+**Model.** Alice (the compromised device) and Bob (honest) run N sessions in
+a row (2 ≤ N ≤ 5). Each session is one DH exchange, a session key
+`K_i = KDF(s_i)`, and short ASCII messages in both directions encrypted under
+`K_i`. The attacker knows the whole system (Kerckhoffs) and holds only X and
+the configuration. From the public transcript, each consecutive pair
+`(A_{i-1}, A_i)` gives `a_i` (the existing `recover_shared_secret`), so the
+attacker decrypts sessions 2…N. **Session 1 stays confidential**: it is the
+(1,2)-leakage made visible at the application level. Eve, with the same
+transcript and no X, reads nothing.
+
+**Primitives** (all from `cryptography`, never reimplemented):
+
+- **KDF** (`crypto/kdf/`): NIST SP 800-56C Rev. 2 one-step KDF with SHA-256,
+  via `ConcatKDFHash`: `K = SHA-256(0x00000001 ‖ Z ‖ OtherInfo)`, 32 bytes.
+  `Z` is the shared secret big-endian with the byte length of p (fixed width,
+  as I2OSP, like the SETUP's H). `OtherInfo` is a fixed label. No salt and
+  no randomness: the key is a deterministic function of the shared secret,
+  which is exactly what the attacker exploits.
+- **AEAD** (`crypto/aead/`): AES-256-GCM, 96-bit nonce from `secrets`, 128-bit
+  tag, no associated data. The nonce is random but public: it travels with
+  the ciphertext, so it adds no secret. A wrong key fails the tag check,
+  which is how "the attacker cannot read session 1" shows up.
+- Both packages take integers or bytes and **never import `dh`**, so they can
+  be reused by future targets (RSA, ML-DSA).
+
+**Layout** (dependency direction
+`channel/setup → channel → {dh, dh/setup only in channel/setup, kdf, aead}`):
+
+```text
+crypto/kdf/        exceptions.py, one_step.py (derive_key → KeyDerivation record)
+crypto/aead/       exceptions.py, aes_gcm.py (encrypt/decrypt), records.py
+                   (EncryptedMessage: nonce, ciphertext, tag)
+crypto/channel/    exceptions.py, records.py (session and transcript value
+                   objects), session.py (one session), protocol.py (N sessions)
+crypto/channel/setup/  attacker.py: transcript + YoungYungAttacker +
+                   configuration → decrypted sessions 2…N, session 1 marked
+                   as not recoverable
+```
+
+- The honest channel works with `DiffieHellmanParticipant` and is unaware of
+  the SETUP. The device is a drop-in replacement (principle 2): before every
+  session the channel calls `generate_keypair()` on both participants
+  (ephemeral DH), and the device's override is what chains the exponents.
+- `channel/setup/` is the only new kleptographic code. It has no symmetric
+  code of its own: it reuses `recover_shared_secret`, `kdf` and `aead`. It
+  follows the `dh/setup/` rules (no docstrings, isolation test).
+- **Didactic model**: like 4.6, no new tracing events. Every intermediate
+  value (Z bytes, key, nonce, ciphertext, tag, recovered secret) is exposed
+  through frozen value objects, so the UI can show each step. Each session's
+  DH exchange keeps its own `ProtocolExecutionContext` timeline.
+- The transcript type holds only public data (public keys, encrypted
+  messages); the attacker API takes it as its only view of the
+  communication, which makes "public information only" explicit.
+- Toy groups give shared secrets of a few bits, so `K_i` is brute-forceable
+  by anyone; the UI must say so, as it does for DH.
+
+**Tests** (mirroring the tree, unique basenames such as
+`test_kdf_one_step.py`, `test_aead_aes_gcm.py`, `test_channel_session.py`,
+`test_channel_attacker.py`): KDF vectors computed independently with
+`hashlib`, GCM round trip and tamper/wrong-key failure, honest channel
+(Bob decrypts everything, with honest and device participants), attacker
+decrypts sessions 2…N and fails on session 1, device transcripts pass the
+same validation as honest ones, and isolation (`kdf`/`aead` never import
+`dh`; `channel` never imports `channel.setup` or `dh.setup`).
+
+**UI** (later): fourth tab "Encrypted channel" in `/young-yung-setup`,
+`content/encrypted_channel.py` and `components/encrypted_channel.py`; one
+row per session with what Bob, Eve and the attacker see.
 
 ## 5. Known limitations and pending cleanups
 
