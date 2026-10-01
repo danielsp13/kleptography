@@ -616,9 +616,12 @@ render_page_encrypted_channel()
 - `render_template(name, **ctx)` builds a `jinja2.Template` from
   `html/templates/<name>`, read as UTF-8. `load_css(name)` reads
   `css/styles/<name>`. Both resolve paths relative to their own module.
-- Header and footer metadata (version `"1.0.0"`, release date, author,
-  links, and the `kleptographic_mechanisms` list) is **hardcoded** in
-  `components/*.py`. Header pills stay short: `kleptographic_mechanisms`
+- The version has a single source, `pyproject.toml` (`1.0.0`):
+  `kleptography.__version__` reads it from the installed package metadata,
+  and the header and footer import it. Other header and footer metadata
+  (release date, author, links, and the `kleptographic_mechanisms` list) is
+  **hardcoded** in `components/*.py`. The footer links point to the
+  repository (documentation too) and to its `LICENSE`. Header pills stay short: `kleptographic_mechanisms`
   names the targeted cryptosystem (`"Diffie-Hellman"` covers the SETUP and
   the encrypted channel), not each section. Add an entry only for a new
   target (e.g. RSA).
@@ -632,9 +635,8 @@ render_page_encrypted_channel()
 ### 4.6 Kleptographic code (`crypto/dh/setup/`)
 
 The package depends on the honest DH modules, and they never import it
-(`tests/crypto/dh/setup/test_setup_isolation.py` checks this). **The
-`setup/` modules have no docstrings on purpose.** Keep plain `#` comments;
-do not add docstrings unless a task asks for it.
+(`tests/crypto/dh/setup/test_setup_isolation.py` checks this). Its
+docstrings keep the paper's names (`c1`, `m1`, `a`, `b`, `W`, `t`, `H`).
 
 ```text
 setup/
@@ -877,7 +879,7 @@ crypto/channel/setup/  exceptions.py, records.py (InterceptionOutcome,
     allows only `channel`, `dh`, `kdf` and `aead` imports, and never
     `dh.setup` or `channel.setup`. The device is used only in tests.
 - **Attacker (done)**, `channel/setup/`: the only kleptographic code of the
-  channel. It follows the `dh/setup/` rules (no docstrings, isolation test)
+  channel. It follows the `dh/setup/` rules (paper names, isolation test)
   and has no symmetric code of its own.
   - `attacker.py`: `intercept_channel(transcript, *, attacker,
     configuration) -> ChannelInterception`. It takes only the public
@@ -937,10 +939,10 @@ imports only `channel`, `dh`, `kdf`, `aead` and `math`).
 **UI**: its own page `/encrypted-channel`, not a tab of the SETUP section
 (see 4.5, "Encrypted channel section").
 
-## 5. Known limitations and pending cleanups
+## 5. Known limitations
 
-Only fix these when the task asks for it, or when you are already editing
-the affected code.
+There are no pending cleanups. These limitations are known and accepted;
+only address them when a task asks for it.
 
 - The interactive sections have not been reviewed visually in a browser by
   an agent; they were only executed headless with `streamlit.testing`
@@ -955,23 +957,13 @@ the affected code.
 - The SETUP section does not yet show an honest device side by side with
   the compromised one (4.6 asks for them to be directly comparable); it
   states that the transcript passes the same validation instead.
-- The UI version `"1.0.0"` differs from `pyproject.toml` `0.1.0`, and the
-  footer's documentation and license URLs point to the GitHub profile, not
-  the repository.
-- In `components/header.py`, `description` concatenates `"...studying and"`
-  with `"demonstrating..."` without a space.
-- Docstring style is mixed: Google style in `math/`, NumPy style in
-  `crypto/dh/validation.py` and `participant.py`, and some modules
-  (`tracing/*`, `app/*`) have no module docstring. `crypto/dh/setup/` has no
-  docstrings at all, on purpose (see 4.6).
 
 ## 6. Code conventions
 
 - **Imports are absolute from `kleptography.`**, never `src.kleptography.`.
   Importing the same file under both names creates two distinct classes and
   breaks test collection.
-- Start new modules with a docstring and `from __future__ import annotations`
-  (except in `crypto/dh/setup/`, which has no docstrings; see 4.6).
+- Start new modules with a docstring and `from __future__ import annotations`.
 - Use frozen, slotted dataclasses for value objects
   (`@dataclass(frozen=True, slots=True)`), validated in `__post_init__`.
 - Make functions that take several integers (`prime`, `generator`,
@@ -986,10 +978,14 @@ the affected code.
   hierarchy.
 - Generate secrets with `secrets`, never with `random`. Test primality
   through `sympy`.
-- Match the docstring style of the module being edited. For new modules,
-  prefer Google style (`Args:` / `Returns:` / `Raises:`).
-- Ruff enforces formatting and linting (line length 88, rules `E`, `F`, `I`)
-  and `ty` enforces type checking. Type-annotate every function, including
+- Docstrings follow the Google style (PEP 257): the summary on the first
+  line, then `Args:` / `Returns:` / `Raises:` for public functions and
+  methods, and `Attributes:` (plus `Raises:` for validation) for classes and
+  dataclasses. Private helpers get a one-line summary. Every module and
+  package has a docstring. Inline code uses double backticks.
+- Ruff enforces formatting and linting (line length 88, rules `D`, `E`, `F`,
+  `I`; `D` uses the Google convention and ignores `D105`/`D107`, magic
+  methods and `__init__`) and `ty` enforces type checking. Type-annotate every function, including
   test functions and fixtures.
 - Write user-facing text, docstrings and identifiers in English.
 
@@ -997,6 +993,11 @@ the affected code.
 
 - Mirror the source tree: `src/kleptography/x/y.py` → `tests/x/test_y.py`.
   There is no `conftest.py`; fixtures are defined per module.
+- Every test module starts with a docstring: `Tests for <subject>.` (or
+  `Isolation tests for <package>.`), then a paragraph on what the tests
+  check, then the test vectors if any. Every test, fixture and helper has a
+  one-line docstring stating the behaviour checked, without repeating the
+  test name.
 - Keep tests deterministic. Use the toy group `p=23, g=2, q=11` as a
   fixture, and fix keys with `participant.load_private_key(x)`. Reference
   values: `x_A=6 → y_A=18`, `x_B=7 → y_B=13`, shared secret `6`. A second

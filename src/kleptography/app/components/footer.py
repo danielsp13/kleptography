@@ -13,7 +13,7 @@ def render_component_footer() -> None:
         title="Kleptography",
         subtitle="Cryptography against cryptography",
         version=__version__,
-        release_date="2026-09-21",
+        release_date="2026-10-01",
         year="2026",
         author_name="Daniel Pérez Ruiz",
         repository_url="https://github.com/danielsp13/kleptography/",

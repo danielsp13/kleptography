@@ -23,7 +23,7 @@ def render_component_header() -> None:
         description="An open-source educational project for studying and "
         + "demonstrating kleptographic techniques.",
         version=__version__,
-        release_date="2026-09-21",
+        release_date="2026-10-01",
         author_name="Daniel Pérez Ruiz",
         author_role="Cryptography Software Engineer @",
         company="jtsec Beyond IT Security",
