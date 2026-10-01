@@ -75,6 +75,7 @@ def render_component_value(
     visibility: Visibility,
     number_format: NumberFormat,
     width_bits: int | None = None,
+    highlight: bool = False,
 ) -> None:
     """
     Render a labeled cryptographic value in a wrapping code block.
@@ -87,14 +88,15 @@ def render_component_value(
         width_bits: Optional fixed width for hexadecimal padding, usually
             the bit length of ``p``. Leave it unset for small constants such
             as the generator.
+        highlight: Whether to tint the block, to mark a value that the
+            reader just computed.
     """
     text = format_integer(value, number_format, width_bits=width_bits)
-    height = _MAX_VALUE_HEIGHT if len(text) > _LONG_VALUE_CHARACTERS else "content"
 
     st.markdown(
         f"{label} &nbsp; {_BADGE[visibility]} &nbsp; :gray[{value.bit_length()} bits]"
     )
-    st.code(text, language="text", wrap_lines=True, height=height)
+    _render_code(label, text, highlight=highlight)
 
 
 def render_component_bytes(
@@ -102,6 +104,7 @@ def render_component_bytes(
     data: bytes,
     *,
     visibility: Visibility,
+    highlight: bool = False,
 ) -> None:
     """
     Render a labeled byte string in hexadecimal, in a wrapping code block.
@@ -110,12 +113,12 @@ def render_component_bytes(
         label: Markdown label, typically including a LaTeX symbol.
         data: The bytes to display.
         visibility: Who can see the value.
+        highlight: Whether to tint the block, to mark a computed value.
     """
     text = format_bytes(data)
-    height = _MAX_VALUE_HEIGHT if len(text) > _LONG_VALUE_CHARACTERS else "content"
 
     st.markdown(f"{label} &nbsp; {_BADGE[visibility]} &nbsp; :gray[{len(data)} bytes]")
-    st.code(text, language="text", wrap_lines=True, height=height)
+    _render_code(label, text, highlight=highlight)
 
 
 def render_component_text(
@@ -123,6 +126,7 @@ def render_component_text(
     text: str,
     *,
     visibility: Visibility,
+    highlight: bool = False,
 ) -> None:
     """
     Render a labeled human-readable text, such as a message, in a code block.
@@ -131,11 +135,26 @@ def render_component_text(
         label: Markdown label.
         text: The text to display, shown verbatim.
         visibility: Who can see the text.
+        highlight: Whether to tint the block, to mark a computed value.
     """
     st.markdown(
         f"{label} &nbsp; {_BADGE[visibility]} &nbsp; :gray[{len(text)} characters]"
     )
-    st.code(text, language="text", wrap_lines=True)
+    _render_code(label, text, highlight=highlight)
+
+
+def _render_code(label: str, text: str, *, highlight: bool) -> None:
+    height = _MAX_VALUE_HEIGHT if len(text) > _LONG_VALUE_CHARACTERS else "content"
+
+    if not highlight:
+        st.code(text, language="text", wrap_lines=True, height=height)
+        return
+
+    # Streamlit adds the class "st-key-<key>" to a keyed container, which
+    # protocol.css uses to tint the block. The key only has to be unique.
+    key = f"computed-value-{hash((label, text)) & 0xFFFFFFFF:08x}"
+    with st.container(key=key):
+        st.code(text, language="text", wrap_lines=True, height=height)
 
 
 def render_component_protocol_step(

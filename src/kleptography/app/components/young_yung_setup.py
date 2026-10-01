@@ -83,6 +83,9 @@ def render_component_backdoor(
         display: How values are displayed.
     """
     parameters = configuration.parameters
+    # Y is stored in the configuration: recomputing g^X costs a full modular
+    # exponentiation (about a second with FFDHE8192) on every rerun.
+    public_key = configuration.attacker_public_key
     attacker_column, device_column = st.columns(2)
 
     with attacker_column, st.container(border=True):
@@ -96,10 +99,10 @@ def render_component_backdoor(
                 base=parameters.generator,
                 exponent=attacker.private_key,
                 prime=parameters.prime,
-                result=attacker.public_key,
+                result=public_key,
             )
         )
-        _value("Public key $Y$", attacker.public_key, Visibility.DEVICE, display)
+        _value("Public key $Y$", public_key, Visibility.DEVICE, display)
 
     with device_column, st.container(border=True):
         st.markdown("#### :material/memory: Inside Alice's device")

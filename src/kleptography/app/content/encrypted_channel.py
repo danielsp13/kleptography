@@ -383,6 +383,19 @@ def build_device_choice_content() -> str:
     ).build()
 
 
+def build_messages_tip_content() -> str:
+    """Return the callout that invites the reader to write the messages."""
+    return CalloutComposer.tip(
+        content=(
+            "The texts below are only examples. Click any field and write "
+            "your own messages: they are encrypted exactly as you type them, "
+            "and you will find them again, as ciphertext, in the "
+            "<strong>Attacker</strong> tab."
+        ),
+        title="Write your own messages",
+    ).build()
+
+
 def build_indistinguishable_content() -> str:
     """Return the callout that closes the participant's point of view."""
     return CalloutComposer.note(
@@ -395,4 +408,148 @@ def build_indistinguishable_content() -> str:
             "looks like from the other side."
         ),
         title="Nothing looks wrong",
+    ).build()
+
+
+def workbench_step_definitions(number: int) -> tuple[StepDefinition, ...]:
+    """
+    Return the four steps of the attacker's workbench for session ``number``.
+
+    Args:
+        number: The session the attacker works on, starting at 1.
+
+    Returns:
+        The recovery, shared secret, key derivation and decryption steps.
+    """
+    i = number
+    previous = f"A_{{{i - 1}}}" if i > 1 else "A_{0}"
+    return (
+        StepDefinition(
+            title=f"Recover Alice's private key $a_{{{i}}}$",
+            explanation=(
+                f"Pair the public key of this session, $A_{{{i}}}$, with the "
+                f"one of the previous session, ${previous}$. With $X$, the "
+                "attacker removes the mask the device put on $z$, tries both "
+                "values of the hidden bit $t$ and keeps the candidate whose "
+                f"public key reproduces $A_{{{i}}}$."
+            ),
+            formula=(
+                rf"r = {previous}^{{\alpha}} g^{{\beta}},\quad "
+                rf"z_1 = \frac{{{previous}}}{{r^{{X}}}},\quad "
+                rf"z_2 = \frac{{z_1}}{{g^{{W}}}},\quad "
+                rf"\hat{{a}}_k = H(z_k),\quad g^{{\hat{{a}}_k}} \overset{{?}}{{=}} "
+                rf"A_{{{i}}}"
+            ),
+        ),
+        StepDefinition(
+            title=f"Compute the shared secret $s_{{{i}}}$",
+            explanation=(
+                "With a private key of Alice, the attacker computes the "
+                f"shared secret exactly as she does, from Bob's public key "
+                f"$B_{{{i}}}$, which travelled over the network. Type a key "
+                "or use the recovered one."
+            ),
+            formula=rf"s_{{{i}}} = B_{{{i}}}^{{\,a_{{{i}}}}} \bmod p",
+        ),
+        StepDefinition(
+            title=f"Derive the session key $K_{{{i}}}$",
+            explanation=(
+                "The KDF is public and has no secret input other than the "
+                "shared secret, so the attacker runs it like any participant. "
+                "Type a secret or use the computed one."
+            ),
+            formula=(
+                rf"K_{{{i}}} = \mathrm{{SHA\text{{-}}256}}(\texttt{{00000001}} "
+                rf"\,\Vert\, Z_{{{i}}} \,\Vert\, \mathit{{OtherInfo}})"
+            ),
+        ),
+        StepDefinition(
+            title="Decrypt a message with AES-256-GCM",
+            explanation=(
+                "Pick a message of this session: its nonce, ciphertext and tag "
+                "are public. Type a 256-bit key in hexadecimal or use the "
+                "derived one. AES-GCM checks the tag first: a wrong key is "
+                "rejected instead of producing garbage."
+            ),
+            formula=(
+                rf"m = \mathrm{{AES\text{{-}}GCM}}^{{-1}}_{{K_{{{i}}}}}"
+                r"(n,\ c,\ \tau) \quad \text{or} \quad \bot"
+            ),
+        ),
+    )
+
+
+def build_attacker_intro_content() -> str:
+    """Return the introduction of the attacker's point of view."""
+    content = ContentComposer()
+
+    content.paragraph(
+        "Now take the attacker's seat. You see only what crossed the "
+        "network in the last run of the Participant tab, plus the artifacts "
+        "of your own backdoor. You do not know which device Alice used: "
+        "find out by trying to read her sessions.",
+    )
+
+    content.paragraph(
+        "The workbench below is manual: each step takes a value you type, so "
+        "you can follow the recovery, or feed it wrong values and watch the "
+        "chain break. Buttons copy the value of the previous step when you "
+        "just want to move on.",
+    )
+
+    return content.build()
+
+
+def build_artifacts_content() -> str:
+    """Return the callout that explains the attacker's artifacts."""
+    return CalloutComposer.warning(
+        content=(
+            "You built this backdoor. The private key <em>X</em> never left "
+            "your hands; <em>Y</em> and the constants are inside every device "
+            "you compromised, and anyone who reverse-engineers one of them "
+            "finds them too. Without <em>X</em> they are useless."
+        ),
+        title="Your artifacts",
+    ).build()
+
+
+def build_first_session_content() -> str:
+    """Return the callout shown when the attacker picks session 1."""
+    return CalloutComposer.info(
+        content=(
+            "Session 1 has no previous public key to pair with, so there is "
+            "nothing to unmask: its key was drawn at random even by a "
+            "compromised device. This is the (1,2)-leakage at work. You can "
+            "still type guesses in the next steps and watch AES-GCM reject "
+            "them."
+        ),
+        title="Nothing to recover in session 1",
+    ).build()
+
+
+def build_recovery_failed_content() -> str:
+    """Return the callout shown when no candidate reproduces A_i."""
+    return CalloutComposer.danger(
+        content=(
+            "Neither candidate reproduces this public key: it was not derived "
+            "from the previous one by your SETUP. Most likely Alice used an "
+            "honest device, whose keys are independent. Nothing stops you "
+            "from following the chain with either candidate: you will get a "
+            "shared secret and a session key, but they are the wrong ones, "
+            "and AES-GCM will reject them."
+        ),
+        title="The SETUP is not there",
+    ).build()
+
+
+def build_eve_content() -> str:
+    """Return the callout that compares the attacker with Eve."""
+    return CalloutComposer.danger(
+        content=(
+            "Eve recorded exactly the same traffic and knows the same "
+            "ciphersuite. She can run steps 2 to 4 like you, but she has no "
+            "<em>X</em> for step 1, so she would have to solve a discrete "
+            "logarithm first. With a standardized group, she reads nothing."
+        ),
+        title="Eve versus the attacker",
     ).build()

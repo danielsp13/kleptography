@@ -24,20 +24,33 @@ from kleptography.app.components.protocol import (
 )
 from kleptography.app.content.diffie_hellman import StepDefinition
 from kleptography.app.content.encrypted_channel import session_step_definitions
+from kleptography.app.content.numbers import is_small
 from kleptography.app.content.young_yung_setup import (
     ExchangeSummary,
+    hash_formula,
     power_formula,
+    r_formula,
     summarize_exchange,
+    z1_formula,
+    z2_formula,
 )
 from kleptography.crypto.channel.records import (
     ChannelMessage,
     ChannelRun,
     ChannelSession,
+    ChannelTranscript,
+    SessionTranscript,
+    TranscriptMessage,
+)
+from kleptography.crypto.channel.setup.records import (
+    ChannelInterception,
+    InterceptedSession,
+    InterceptionOutcome,
 )
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.setup.attacker import YoungYungAttacker
 from kleptography.crypto.dh.setup.configuration import YoungYungConfiguration
-from kleptography.crypto.dh.setup.records import SetupDerivation
+from kleptography.crypto.dh.setup.records import SetupCandidates, SetupDerivation
 from kleptography.crypto.dh.tracing.events import Actor
 from kleptography.crypto.kdf.records import KeyDerivation
 
@@ -64,6 +77,9 @@ class ChannelExperiment:
         run: The private view of the channel (keys, secrets, plaintexts).
         derivations: The SETUP derivations of the compromised device, one
             per session from session 2 on; empty with an honest device.
+        interception: The attacker's reading of the public transcript,
+            computed once with the run: the recoveries exponentiate modulo
+            ``p``, which is too slow to repeat on every rerun of the page.
     """
 
     device_kind: DeviceKind
@@ -71,6 +87,7 @@ class ChannelExperiment:
     configuration: YoungYungConfiguration
     run: ChannelRun
     derivations: tuple[SetupDerivation, ...]
+    interception: ChannelInterception
 
     @property
     def parameters(self) -> DiffieHellmanParameters:
@@ -96,7 +113,7 @@ def render_component_channel_session(
         session.number
     )
 
-    with _step(1, exchange_step):
+    with render_component_step(1, exchange_step):
         _render_exchange(
             session.number,
             summarize_exchange(session.events),
@@ -104,14 +121,24 @@ def render_component_channel_session(
             display=display,
         )
 
-    with _step(2, derivation_step):
+    with render_component_step(2, derivation_step):
         _render_key_derivations(session)
 
-    with _step(3, messages_step):
+    with render_component_step(3, messages_step):
         _render_messages(session)
 
 
-def _step(number: int, definition: StepDefinition) -> DeltaGenerator:
+def render_component_step(number: int, definition: StepDefinition) -> DeltaGenerator:
+    """
+    Render the bordered container of an explanatory step and return it.
+
+    Args:
+        number: The step number shown in the title.
+        definition: The title, explanation and formula of the step.
+
+    Returns:
+        The container, so the caller can render the step's body inside it.
+    """
     container = st.container(border=True)
     container.markdown(f"### Step {number} · {definition.title}")
     container.markdown(definition.explanation)
@@ -124,6 +151,8 @@ def _value(
     value: int,
     visibility: Visibility,
     display: ValueDisplay,
+    *,
+    highlight: bool = False,
 ) -> None:
     render_component_value(
         label,
@@ -131,6 +160,7 @@ def _value(
         visibility=visibility,
         number_format=display.number_format,
         width_bits=display.width_bits,
+        highlight=highlight,
     )
 
 
@@ -219,7 +249,9 @@ def _render_key_derivations(session: ChannelSession) -> None:
     for column, (actor, derivation) in zip(st.columns(2), derivations, strict=True):
         with column, st.container(border=True):
             st.markdown(f"#### {_ACTOR_NAME[actor]}")
-            _render_key_derivation(i, derivation)
+            render_component_key_derivation(
+                i, derivation, visibility=Visibility.SHARED_SECRET
+            )
 
     if session.keys_match:
         st.success(
@@ -231,24 +263,6 @@ def _render_key_derivations(session: ChannelSession) -> None:
             "The session keys differ: no message can be decrypted.",
             icon=":material/error:",
         )
-
-
-def _render_key_derivation(number: int, derivation: KeyDerivation) -> None:
-    render_component_bytes(
-        f"Encoded secret $Z_{number}$",
-        derivation.encoded_secret,
-        visibility=Visibility.SHARED_SECRET,
-    )
-    render_component_text(
-        "Label $\\mathit{OtherInfo}$ (ASCII)",
-        derivation.other_info.decode("ascii"),
-        visibility=Visibility.PUBLIC,
-    )
-    render_component_bytes(
-        f"Session key $K_{number}$",
-        derivation.key,
-        visibility=Visibility.SHARED_SECRET,
-    )
 
 
 def _render_messages(session: ChannelSession) -> None:
@@ -272,20 +286,7 @@ def _render_message(message: ChannelMessage) -> None:
             visibility=Visibility.SHARED_SECRET,
         )
 
-        nonce_column, tag_column = st.columns(2)
-        with nonce_column:
-            render_component_bytes(
-                "Nonce $n$", message.encrypted.nonce, visibility=Visibility.PUBLIC
-            )
-        with tag_column:
-            render_component_bytes(
-                "Tag $\\tau$", message.encrypted.tag, visibility=Visibility.PUBLIC
-            )
-        render_component_bytes(
-            "Ciphertext $c$",
-            message.encrypted.ciphertext,
-            visibility=Visibility.PUBLIC,
-        )
+        render_component_encrypted_message(message.transcript)
 
         render_component_text(
             f"Message decrypted by {recipient}",
@@ -303,3 +304,349 @@ def _render_message(message: ChannelMessage) -> None:
                 f"{recipient} did not read what {sender} wrote.",
                 icon=":material/error:",
             )
+
+
+def render_component_key_derivation(
+    number: int,
+    derivation: KeyDerivation,
+    *,
+    visibility: Visibility,
+    highlight: bool = False,
+) -> None:
+    """
+    Render the encoded secret, the label and the key of a key derivation.
+
+    Args:
+        number: The session index used in the labels.
+        derivation: The derivation to show.
+        visibility: Who knows the encoded secret and the key.
+        highlight: Whether to tint the computed values (Z and K).
+    """
+    render_component_bytes(
+        f"Encoded secret $Z_{{{number}}}$",
+        derivation.encoded_secret,
+        visibility=visibility,
+        highlight=highlight,
+    )
+    render_component_text(
+        "Label $\\mathit{OtherInfo}$ (ASCII)",
+        derivation.other_info.decode("ascii"),
+        visibility=Visibility.PUBLIC,
+    )
+    render_component_bytes(
+        f"Session key $K_{{{number}}}$",
+        derivation.key,
+        visibility=visibility,
+        highlight=highlight,
+    )
+
+
+def render_component_encrypted_message(message: TranscriptMessage) -> None:
+    """
+    Render the public fields of an encrypted message: nonce, tag, ciphertext.
+
+    Args:
+        message: The message as it travelled over the network.
+    """
+    nonce_column, tag_column = st.columns(2)
+    with nonce_column:
+        render_component_bytes(
+            "Nonce $n$", message.encrypted.nonce, visibility=Visibility.PUBLIC
+        )
+    with tag_column:
+        render_component_bytes(
+            "Tag $\\tau$", message.encrypted.tag, visibility=Visibility.PUBLIC
+        )
+    render_component_bytes(
+        "Ciphertext $c$",
+        message.encrypted.ciphertext,
+        visibility=Visibility.PUBLIC,
+    )
+
+
+def render_component_transcript(
+    transcript: ChannelTranscript,
+    *,
+    display: ValueDisplay,
+) -> None:
+    """
+    Render what crossed the network, one tab per session.
+
+    Args:
+        transcript: The public view of the channel.
+        display: How values are displayed.
+    """
+    tabs = st.tabs([f"Session {session.number}" for session in transcript.sessions])
+    for tab, session in zip(tabs, transcript.sessions, strict=True):
+        with tab:
+            _render_session_transcript(session, display=display)
+
+
+def _render_session_transcript(
+    session: SessionTranscript,
+    *,
+    display: ValueDisplay,
+) -> None:
+    i = session.number
+    alice_column, bob_column = st.columns(2)
+    with alice_column, st.container(border=True):
+        st.markdown("#### Alice :material/arrow_forward: Bob")
+        _value(
+            f"Public key $A_{i}$", session.alice_public_key, Visibility.PUBLIC, display
+        )
+    with bob_column, st.container(border=True):
+        st.markdown("#### Bob :material/arrow_forward: Alice")
+        _value(
+            f"Public key $B_{i}$", session.bob_public_key, Visibility.PUBLIC, display
+        )
+
+    if not session.messages:
+        st.caption("No messages were sent in this session.")
+    for message in session.messages:
+        with st.container(border=True):
+            sender = _ACTOR_NAME[message.sender]
+            recipient = _ACTOR_NAME[message.recipient]
+            st.markdown(f"#### {sender} :material/arrow_forward: {recipient}")
+            render_component_encrypted_message(message)
+
+
+def render_component_recovery(
+    candidates: SetupCandidates,
+    *,
+    second_public_key: int,
+    recovered_key: int | None,
+    number: int,
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+    display: ValueDisplay,
+) -> None:
+    """
+    Render the attacker's candidates for ``a_i`` and their check against ``A_i``.
+
+    Args:
+        candidates: What the attacker computed from ``A_{i-1}`` alone.
+        second_public_key: ``A_i``, the public key the candidates must match.
+        recovered_key: The candidate that reproduces ``A_i``, or ``None`` if
+            neither does (for example, with an honest device).
+        number: The session the attacker works on (at least 2).
+        attacker: The attacker, holding ``X``.
+        configuration: The SETUP configuration.
+        display: How values are displayed.
+    """
+    parameters = configuration.parameters
+    previous = f"A_{{{number - 1}}}"
+    z1, z2 = candidates.z_candidates
+
+    previous_column, current_column = st.columns(2)
+    with previous_column:
+        _value(
+            f"Previous public key ${previous}$",
+            candidates.first_public_key,
+            Visibility.PUBLIC,
+            display,
+        )
+    with current_column:
+        _value(
+            f"Public key $A_{{{number}}}$",
+            second_public_key,
+            Visibility.PUBLIC,
+            display,
+        )
+
+    with st.container(border=True):
+        st.markdown("#### :material/vpn_key: Unmasking $z$")
+        st.latex(
+            r_formula(
+                first_public_key=candidates.first_public_key,
+                multiplier_a=configuration.multiplier_a,
+                generator=parameters.generator,
+                offset_b=configuration.offset_b,
+                prime=parameters.prime,
+                r=candidates.r,
+                first_symbol=previous,
+            )
+        )
+        _value("$r$", candidates.r, Visibility.ATTACKER, display, highlight=True)
+        st.latex(
+            z1_formula(
+                first_public_key=candidates.first_public_key,
+                r=candidates.r,
+                attacker_private_key=attacker.private_key,
+                prime=parameters.prime,
+                z1=z1,
+                first_symbol=previous,
+            )
+        )
+        _value(
+            "Candidate $z_1$ (if $t = 0$)",
+            z1,
+            Visibility.ATTACKER,
+            display,
+            highlight=True,
+        )
+        st.latex(
+            z2_formula(
+                z1=z1,
+                generator=parameters.generator,
+                correction_w=configuration.correction_w,
+                prime=parameters.prime,
+                z2=z2,
+            )
+        )
+        _value(
+            "Candidate $z_2$ (if $t = 1$)",
+            z2,
+            Visibility.ATTACKER,
+            display,
+            highlight=True,
+        )
+
+    for index, (column, z, candidate) in enumerate(
+        zip(
+            st.columns(2),
+            candidates.z_candidates,
+            candidates.private_key_candidates,
+            strict=True,
+        ),
+        start=1,
+    ):
+        with column, st.container(border=True):
+            st.markdown(f"#### Candidate $t = {index - 1}$")
+            st.latex(
+                hash_formula(rf"\hat{{a}}_{index}", f"z_{index}", z=z, result=candidate)
+            )
+            _value(
+                rf"Candidate key $\hat{{a}}_{index}$",
+                candidate,
+                Visibility.ATTACKER,
+                display,
+                # Only the candidate that reproduces A_i is the right key.
+                highlight=candidate == recovered_key,
+            )
+            _render_candidate_check(
+                candidate,
+                recovered_key=recovered_key,
+                second_public_key=second_public_key,
+                index=index,
+                number=number,
+                parameters=parameters,
+            )
+
+    if recovered_key is not None:
+        st.success(
+            f"The attacker has Alice's private key $a_{{{number}}}$.",
+            icon=":material/lock_open:",
+        )
+
+
+def _render_candidate_check(
+    candidate: int,
+    *,
+    recovered_key: int | None,
+    second_public_key: int,
+    index: int,
+    number: int,
+    parameters: DiffieHellmanParameters,
+) -> None:
+    # Only the matching candidate's power is known (it is A_i), so the
+    # rejected one is shown symbolically.
+    target = f"A_{{{number}}}"
+    if candidate != recovered_key:
+        st.markdown(
+            rf"$g^{{\hat{{a}}_{index}}} \not\equiv {target}$ &nbsp; "
+            f":red-badge[:material/close: Does not match ${target}$]"
+        )
+        return
+
+    check = (
+        rf"{parameters.generator}^{{{candidate}}} \bmod {parameters.prime} = "
+        rf"{second_public_key} = {target}"
+        if is_small(candidate, parameters.prime, second_public_key)
+        else rf"g^{{\hat{{a}}_{index}}} \equiv {target}"
+    )
+    st.markdown(f"${check}$ &nbsp; :green-badge[:material/check: Matches ${target}$]")
+
+
+_OUTCOME_TEXT = {
+    InterceptionOutcome.NOT_RECOVERABLE: "Not possible (first session)",
+    InterceptionOutcome.RECOVERY_FAILED: "Failed: no SETUP link",
+    InterceptionOutcome.RECOVERED: "Recovered",
+}
+
+
+def render_component_interception_summary(
+    interception: ChannelInterception,
+    experiment: ChannelExperiment,
+) -> None:
+    """
+    Render who reads what in each session, and compare it with the device.
+
+    Args:
+        interception: The attacker's reading of the whole transcript.
+        experiment: The executed run, used only for the comparison with
+            what really happened.
+    """
+    rows = [
+        "| Session | Attacker's recovery | Attacker reads | Bob reads | Eve reads |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for intercepted, session in zip(
+        interception.sessions, experiment.run.sessions, strict=True
+    ):
+        total = len(session.messages)
+        read = sum(message.readable for message in intercepted.messages)
+        delivered = sum(message.delivered for message in session.messages)
+        rows.append(
+            f"| {intercepted.number} | {_OUTCOME_TEXT[intercepted.outcome]} | "
+            f"{_reading(intercepted, read, total)} | {delivered} of {total} | "
+            f"0 of {total} |"
+        )
+    st.markdown("\n".join(rows))
+
+    with st.expander(
+        "Compare with what really happened inside the device",
+        icon=":material/memory:",
+    ):
+        _render_ground_truth(interception, experiment)
+
+
+def _reading(intercepted: InterceptedSession, read: int, total: int) -> str:
+    if not intercepted.recovered:
+        return f"0 of {total}"
+    if total == 0:
+        return "Key known, no messages"
+    return f"**{read} of {total}**"
+
+
+def _render_ground_truth(
+    interception: ChannelInterception,
+    experiment: ChannelExperiment,
+) -> None:
+    st.markdown(f"Alice's device in this run: **{experiment.device_kind.value}**.")
+
+    if experiment.device_kind is DeviceKind.HONEST:
+        st.markdown(
+            "Every key was drawn at random, so no key is linked to the "
+            "previous one and the recovery has nothing to find. In a toy "
+            "group, a random key can still equal a candidate by pure "
+            "chance: then the attacker really reads that session."
+        )
+        return
+
+    rows = [
+        "| Session | Device's hidden bit $t$ | Device's key equals the recovered one |",
+        "| --- | --- | --- |",
+        "| 1 | — (drawn at random) | — |",
+    ]
+    for derivation, intercepted in zip(
+        experiment.derivations, interception.sessions[1:], strict=True
+    ):
+        recovery = intercepted.recovery
+        matches = (
+            recovery is not None and recovery.private_key == derivation.private_key
+        )
+        rows.append(
+            f"| {intercepted.number} | {derivation.correction_bit} | "
+            f"{'Yes' if matches else 'No'} |"
+        )
+    st.markdown("\n".join(rows))

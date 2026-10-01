@@ -24,3 +24,11 @@
     overflow-y: hidden;
     padding-block: 0.25rem;
 }
+
+/* Values the reader has just computed (the attacker's workbench) are tinted
+   orange, so the result of each step stands out from the given data. The
+   translucent tint works on both the light and the dark theme. */
+[class*="st-key-computed-value"] [data-testid="stCode"] pre {
+    background-color: rgba(255, 145, 0, 0.14) !important;
+    box-shadow: inset 4px 0 0 rgb(255, 145, 0);
+}

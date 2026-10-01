@@ -133,3 +133,27 @@ def parse_integer(text: str) -> int:
         return int(digits[2:], 16)
 
     return int(digits, 10)
+
+
+def parse_bytes(text: str) -> bytes:
+    """
+    Parse a byte string typed by the user in hexadecimal.
+
+    Spaces are ignored, so values produced by ``format_bytes`` can be pasted
+    back, and an optional ``0x`` prefix is accepted.
+
+    Args:
+        text: The user input.
+
+    Returns:
+        The parsed bytes.
+
+    Raises:
+        ValueError: If the text is not an even number of hexadecimal digits.
+    """
+    digits = "".join(text.split())
+
+    if digits.lower().startswith("0x"):
+        digits = digits[2:]
+
+    return bytes.fromhex(digits)

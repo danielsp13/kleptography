@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import StrEnum
+from functools import cache
 
 import streamlit as st
 
@@ -116,7 +117,7 @@ def render_component_group_selection(
         name = st.selectbox(
             "Group", options=list(STANDARD_GROUPS), key=f"{key_prefix}_group"
         )
-        parameters = STANDARD_GROUPS[name]()
+        parameters = _standard_group(name)
 
     st.markdown(
         f"The selected group has a **{parameters.bit_length}-bit** prime. "
@@ -130,6 +131,14 @@ def render_component_group_selection(
     )
 
     return parameters
+
+
+@cache
+def _standard_group(name: str) -> DiffieHellmanParameters:
+    # Building a group re-runs its validation (primality of p and q), which
+    # takes about a second for FFDHE8192. The groups are fixed constants, so
+    # each one is built once per process instead of on every rerun.
+    return STANDARD_GROUPS[name]()
 
 
 def _render_toy_group_controls(key_prefix: str) -> DiffieHellmanParameters:

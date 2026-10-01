@@ -306,10 +306,11 @@ def r_formula(
     offset_b: int,
     prime: int,
     r: int,
+    first_symbol: str = "A_1",
 ) -> str:
     """Return the LaTeX of the attacker's computation of ``r``."""
     return _substituted(
-        r"r = A_1^{\alpha} \cdot g^{\beta} \bmod p",
+        rf"r = {{{first_symbol}}}^{{\alpha}} \cdot g^{{\beta}} \bmod p",
         rf"r = {first_public_key}^{{{multiplier_a}}} \cdot {generator}^{{{offset_b}}}"
         rf" \bmod {prime} = {r}",
         first_public_key,
@@ -328,10 +329,11 @@ def z1_formula(
     attacker_private_key: int,
     prime: int,
     z1: int,
+    first_symbol: str = "A_1",
 ) -> str:
     """Return the LaTeX of the attacker's first candidate ``z1``."""
     return _substituted(
-        r"z_1 = \frac{A_1}{r^{X}} \bmod p",
+        rf"z_1 = \frac{{{first_symbol}}}{{r^{{X}}}} \bmod p",
         rf"z_1 = \frac{{{first_public_key}}}{{{r}^{{{attacker_private_key}}}}}"
         rf" \bmod {prime} = {z1}",
         first_public_key,
