@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1180" viewBox="0 0 1400 1180" font-family="Helvetica, Arial, sans-serif">
+  <!-- One session of the encrypted channel (run_session) and the two views of
+       its result: the private ChannelSession and the public SessionTranscript. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font-size: 26px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-size: 15px; fill: #475569; }
+      .phase { font-size: 15px; font-weight: 700; fill: #334155; }
+      .actor { font-size: 18px; font-weight: 700; fill: #0f172a; }
+      .actor-note { font-size: 13px; fill: #64748b; font-style: italic; }
+      .heading { font-size: 15px; font-weight: 700; fill: #0f172a; }
+      .code { white-space: pre; font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 13.5px; fill: #0f172a; }
+      .small-code { white-space: pre; font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 12.5px; fill: #0f172a; }
+      .text { font-size: 13.5px; fill: #334155; }
+      .note { font-size: 13px; fill: #64748b; font-style: italic; }
+      .public { font-size: 13px; fill: #c2410c; font-weight: 700; }
+      .private { font-size: 13px; fill: #1e3a8a; font-weight: 700; }
+      .lifeline { stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 6 5; }
+      .edge { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .band { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1.2; }
+      .box { fill: #eef2ff; stroke: #4f6bd8; stroke-width: 1.6; }
+      .channel { fill: #fff7ed; stroke: #ea580c; stroke-width: 1.6; }
+      .wire { fill: #ffffff; stroke: #ea580c; stroke-width: 1.6; }
+      .private-view { fill: #eef2ff; stroke: #4f6bd8; stroke-width: 1.6; }
+      .public-view { fill: #fff7ed; stroke: #ea580c; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="1180" fill="#ffffff"/>
+
+  <text x="40" y="48" class="title">run_session: ephemeral DH, key derivation and messages</text>
+  <text x="40" y="74" class="subtitle">One session i of run_channel. Every value that crosses the network is public; everything else stays with Alice and Bob.</text>
+
+  <!-- phase bands -->
+  <rect x="30" y="170" width="1340" height="200" rx="10" class="band"/>
+  <rect x="30" y="380" width="1340" height="150" rx="10" class="band"/>
+  <rect x="30" y="540" width="1340" height="200" rx="10" class="band"/>
+  <text x="44" y="194" class="phase">1 · Ephemeral DH</text>
+  <text x="44" y="404" class="phase">2 · Key derivation</text>
+  <text x="44" y="564" class="phase">3 · Messages</text>
+
+  <!-- actors -->
+  <rect x="200" y="100" width="260" height="56" rx="10" class="box"/>
+  <text x="330" y="126" class="actor" text-anchor="middle">Alice</text>
+  <text x="330" y="146" class="actor-note" text-anchor="middle">honest participant or the device</text>
+  <rect x="560" y="100" width="280" height="56" rx="10" class="channel"/>
+  <text x="700" y="126" class="actor" text-anchor="middle">Network</text>
+  <text x="700" y="146" class="actor-note" text-anchor="middle">Eve and the attacker record it</text>
+  <rect x="940" y="100" width="260" height="56" rx="10" class="box"/>
+  <text x="1070" y="134" class="actor" text-anchor="middle">Bob</text>
+  <path d="M 330 156 L 330 745" class="lifeline"/>
+  <path d="M 700 156 L 700 322 M 700 358 L 700 426 M 700 512 L 700 686 M 700 724 L 700 745" class="lifeline"/>
+  <path d="M 1070 156 L 1070 745" class="lifeline"/>
+
+  <!-- phase 1 -->
+  <rect x="190" y="205" width="280" height="150" rx="10" class="box"/>
+  <text x="206" y="230" class="code">generate_keypair()</text>
+  <text x="206" y="250" class="note">always, before the exchange</text>
+  <text x="206" y="280" class="code">a_i, A_i = g^a_i</text>
+  <text x="206" y="310" class="text">perform_key_exchange(...)</text>
+  <text x="206" y="335" class="code">s_i = B_i^a_i mod p</text>
+  <rect x="930" y="205" width="280" height="150" rx="10" class="box"/>
+  <text x="946" y="230" class="code">generate_keypair()</text>
+  <text x="946" y="250" class="note">fresh key every session</text>
+  <text x="946" y="280" class="code">b_i, B_i = g^b_i</text>
+  <text x="946" y="310" class="text">same exchange, 13 events</text>
+  <text x="946" y="335" class="code">s_i = A_i^b_i mod p</text>
+  <path d="M 470 262 L 928 262" class="edge"/>
+  <path d="M 930 292 L 472 292" class="edge"/>
+  <rect x="640" y="248" width="120" height="28" rx="6" class="wire"/>
+  <text x="700" y="267" class="code" text-anchor="middle">A_i</text>
+  <rect x="640" y="278" width="120" height="28" rx="6" class="wire"/>
+  <text x="700" y="297" class="code" text-anchor="middle">B_i</text>
+  <text x="700" y="335" class="note" text-anchor="middle">the device's keys are traced</text>
+  <text x="700" y="352" class="note" text-anchor="middle">as PROVIDED, like Bob's</text>
+
+  <!-- phase 2 -->
+  <rect x="190" y="415" width="280" height="100" rx="10" class="box"/>
+  <text x="206" y="440" class="code">derive_key(s_i,</text>
+  <text x="206" y="460" class="code">  secret_length=len(p))</text>
+  <text x="206" y="490" class="code">K_i  (32 bytes)</text>
+  <rect x="930" y="415" width="280" height="100" rx="10" class="box"/>
+  <text x="946" y="440" class="code">derive_key(s_i,</text>
+  <text x="946" y="460" class="code">  secret_length=len(p))</text>
+  <text x="946" y="490" class="code">K_i  (32 bytes)</text>
+  <text x="700" y="440" class="text" text-anchor="middle">nothing is sent:</text>
+  <text x="700" y="460" class="small-code" text-anchor="middle">K = SHA-256(00000001 ‖ Z ‖ OtherInfo)</text>
+  <text x="700" y="482" class="text" text-anchor="middle">Z = s_i, big-endian, byte length of p</text>
+  <text x="700" y="504" class="note" text-anchor="middle">no salt, no randomness: deterministic</text>
+
+  <!-- phase 3 -->
+  <rect x="190" y="575" width="280" height="150" rx="10" class="box"/>
+  <text x="206" y="600" class="code">encrypt(K_i, m)</text>
+  <text x="206" y="620" class="note">random 12-byte nonce</text>
+  <text x="206" y="665" class="code">decrypt(K_i, …) → m'</text>
+  <text x="206" y="685" class="note">tag checked first: wrong key or</text>
+  <text x="206" y="703" class="note">tampering → AeadAuthenticationError</text>
+  <rect x="930" y="575" width="280" height="150" rx="10" class="box"/>
+  <text x="946" y="600" class="code">decrypt(K_i, …) → m</text>
+  <text x="946" y="620" class="note">with Bob's own key</text>
+  <text x="946" y="665" class="code">encrypt(K_i, m')</text>
+  <text x="946" y="685" class="note">one message per direction</text>
+  <text x="946" y="703" class="note">in the interface</text>
+  <path d="M 470 610 L 928 610" class="edge"/>
+  <path d="M 930 660 L 472 660" class="edge"/>
+  <rect x="560" y="596" width="280" height="28" rx="6" class="wire"/>
+  <text x="700" y="615" class="small-code" text-anchor="middle">nonce · ciphertext · tag</text>
+  <rect x="560" y="646" width="280" height="28" rx="6" class="wire"/>
+  <text x="700" y="665" class="small-code" text-anchor="middle">nonce · ciphertext · tag</text>
+  <text x="700" y="700" class="note" text-anchor="middle">EncryptedMessage: all three fields public</text>
+  <text x="700" y="718" class="note" text-anchor="middle">ciphertext as long as the plaintext</text>
+
+  <!-- two views -->
+  <text x="40" y="790" class="heading">The result: two views of the same session</text>
+
+  <rect x="40" y="805" width="620" height="270" rx="10" class="private-view"/>
+  <text x="60" y="832" class="private">PRIVATE VIEW · ChannelSession (what Alice and Bob know)</text>
+  <text x="60" y="862" class="small-code">number</text>
+  <text x="60" y="884" class="small-code">events                 13 DH events (hidden from repr)</text>
+  <text x="60" y="906" class="small-code">alice_public_key, bob_public_key</text>
+  <text x="60" y="928" class="small-code">alice_key_derivation   KeyDerivation(s_i, Z, OtherInfo, K_i)</text>
+  <text x="60" y="950" class="small-code">bob_key_derivation     KeyDerivation(…)</text>
+  <text x="60" y="972" class="small-code">messages               ChannelMessage(sender, plaintext,</text>
+  <text x="60" y="992" class="small-code">                         encrypted, received_plaintext)</text>
+  <text x="60" y="1022" class="small-code">.keys_match            Alice's K_i == Bob's K_i</text>
+  <text x="60" y="1044" class="small-code">.messages[j].delivered plaintext == received_plaintext</text>
+
+  <rect x="760" y="805" width="600" height="270" rx="10" class="public-view"/>
+  <text x="780" y="832" class="public">PUBLIC VIEW · SessionTranscript (what crosses the network)</text>
+  <text x="780" y="862" class="small-code">number</text>
+  <text x="780" y="906" class="small-code">alice_public_key, bob_public_key</text>
+  <text x="780" y="972" class="small-code">messages               TranscriptMessage(sender,</text>
+  <text x="780" y="992" class="small-code">                         encrypted)</text>
+  <text x="780" y="1030" class="text">No secrets, keys or plaintexts: this is all that</text>
+  <text x="780" y="1050" class="text">Eve and the attacker (intercept_channel) receive.</text>
+
+  <path d="M 660 940 L 758 940" class="edge"/>
+  <text x="709" y="930" class="small-code" text-anchor="middle">.transcript</text>
+
+  <text x="40" y="1115" class="text">The same split holds for the whole channel: ChannelRun(parameters, sessions).transcript is a ChannelTranscript(parameters, session transcripts).</text>
+  <text x="40" y="1140" class="note">The channel code has no SETUP logic: passing the device as Alice is the only difference between an honest and a compromised channel.</text>
+</svg>

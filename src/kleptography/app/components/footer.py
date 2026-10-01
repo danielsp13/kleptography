@@ -17,7 +17,7 @@ def render_component_footer() -> None:
         year="2026",
         author_name="Daniel Pérez Ruiz",
         repository_url="https://github.com/danielsp13/kleptography/",
-        documentation_url="https://github.com/danielsp13/kleptography/",
+        documentation_url="https://github.com/danielsp13/kleptography/tree/main/docs",
         license_url="https://github.com/danielsp13/kleptography/blob/main/LICENSE",
     )
 

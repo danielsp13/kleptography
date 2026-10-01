@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1100" viewBox="0 0 1400 1100" font-family="Helvetica, Arial, sans-serif">
+  <!-- The five phases of perform_key_exchange and the events they emit.
+       Toy values: p = 23, g = 2, q = 11, a = 6, b = 7. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font-size: 26px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-size: 15px; fill: #475569; }
+      .phase { font-size: 15px; font-weight: 700; fill: #334155; }
+      .actor { font-size: 18px; font-weight: 700; fill: #0f172a; }
+      .actor-note { font-size: 13px; fill: #64748b; font-style: italic; }
+      .code { white-space: pre; font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 13.5px; fill: #0f172a; }
+      .text { font-size: 13.5px; fill: #334155; }
+      .toy { font-size: 13px; fill: #059669; }
+      .note { font-size: 13px; fill: #64748b; font-style: italic; }
+      .event { font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 12px; fill: #1e3a8a; }
+      .event-actor { font-size: 12px; fill: #64748b; }
+      .num { font-size: 12px; font-weight: 700; fill: #ffffff; }
+      .lifeline { stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 6 5; }
+      .edge { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .band { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1.2; }
+      .box { fill: #eef2ff; stroke: #4f6bd8; stroke-width: 1.6; }
+      .system { fill: #f1f5f9; stroke: #475569; stroke-width: 1.6; }
+      .channel { fill: #fff7ed; stroke: #ea580c; stroke-width: 1.6; }
+      .events { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.2; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="1100" fill="#ffffff"/>
+
+  <text x="40" y="48" class="title">perform_key_exchange: five phases, thirteen events</text>
+  <text x="40" y="74" class="subtitle">Each phase is a private helper of protocol.py. The numbers match the events an observer records, in order. Green values use the toy group 23 / 2 / 11.</text>
+
+  <!-- phase bands -->
+  <rect x="30" y="170" width="1340" height="130" rx="10" class="band"/>
+  <rect x="30" y="310" width="1340" height="170" rx="10" class="band"/>
+  <rect x="30" y="490" width="1340" height="150" rx="10" class="band"/>
+  <rect x="30" y="650" width="1340" height="150" rx="10" class="band"/>
+  <rect x="30" y="810" width="1340" height="120" rx="10" class="band"/>
+  <text x="44" y="194" class="phase">1 · Parameter agreement</text>
+  <text x="44" y="334" class="phase">2 · Key preparation</text>
+  <text x="44" y="514" class="phase">3 · Public key exchange</text>
+  <text x="44" y="674" class="phase">4 · Shared secrets</text>
+  <text x="44" y="834" class="phase">5 · Verification</text>
+
+  <!-- actors and lifelines -->
+  <rect x="220" y="100" width="220" height="56" rx="10" class="box"/>
+  <text x="330" y="134" class="actor" text-anchor="middle">Alice</text>
+  <rect x="540" y="100" width="220" height="56" rx="10" class="channel"/>
+  <text x="650" y="126" class="actor" text-anchor="middle">Public channel</text>
+  <text x="650" y="146" class="actor-note" text-anchor="middle">Eve records everything here</text>
+  <rect x="860" y="100" width="220" height="56" rx="10" class="box"/>
+  <text x="970" y="134" class="actor" text-anchor="middle">Bob</text>
+  <rect x="1120" y="100" width="236" height="56" rx="10" class="events"/>
+  <text x="1238" y="126" class="actor" text-anchor="middle">Events</text>
+  <text x="1238" y="146" class="actor-note" text-anchor="middle">event type · actor</text>
+  <path d="M 330 156 L 330 935" class="lifeline"/>
+  <path d="M 650 156 L 650 935" class="lifeline"/>
+  <path d="M 970 156 L 970 935" class="lifeline"/>
+
+  <!-- phase 1 -->
+  <rect x="220" y="205" width="860" height="80" rx="10" class="system"/>
+  <text x="650" y="234" class="code" text-anchor="middle">alice.parameters == bob.parameters   (value equality)</text>
+  <text x="650" y="258" class="text" text-anchor="middle">otherwise DiffieHellmanParametersMismatch is raised: nothing is generated or traced</text>
+  <text x="650" y="276" class="toy" text-anchor="middle">p = 23, g = 2, q = 11</text>
+
+  <!-- phase 2 -->
+  <rect x="200" y="345" width="260" height="120" rx="10" class="box"/>
+  <text x="216" y="370" class="code">has_keypair?</text>
+  <text x="216" y="392" class="text">yes: keep it (provided)</text>
+  <text x="216" y="412" class="text">no: generate_keypair()</text>
+  <text x="216" y="434" class="code">A = g^a mod p</text>
+  <text x="216" y="455" class="toy">a = 6, A = 2^6 mod 23 = 18</text>
+  <rect x="840" y="345" width="260" height="120" rx="10" class="box"/>
+  <text x="856" y="370" class="code">has_keypair?</text>
+  <text x="856" y="392" class="text">yes: keep it (provided)</text>
+  <text x="856" y="412" class="text">no: generate_keypair()</text>
+  <text x="856" y="434" class="code">B = g^b mod p</text>
+  <text x="856" y="455" class="toy">b = 7, B = 2^7 mod 23 = 13</text>
+
+  <!-- phase 3 -->
+  <path d="M 330 545 L 966 545" class="edge"/>
+  <text x="420" y="535" class="code">A</text>
+  <text x="440" y="535" class="toy">(A = 18)</text>
+  <path d="M 970 605 L 334 605" class="edge"/>
+  <text x="840" y="595" class="code">B</text>
+  <text x="860" y="595" class="toy">(B = 13)</text>
+  <text x="665" y="630" class="note">public values travel in the clear</text>
+
+  <!-- phase 4 -->
+  <rect x="200" y="665" width="260" height="120" rx="10" class="box"/>
+  <text x="216" y="690" class="text">validate B:</text>
+  <text x="216" y="711" class="code">1 &lt; B &lt; p,  B^q = 1</text>
+  <text x="216" y="736" class="code">s_A = B^a mod p</text>
+  <text x="216" y="760" class="toy">13^6 mod 23 = 6</text>
+  <rect x="840" y="665" width="260" height="120" rx="10" class="box"/>
+  <text x="856" y="690" class="text">validate A:</text>
+  <text x="856" y="711" class="code">1 &lt; A &lt; p,  A^q = 1</text>
+  <text x="856" y="736" class="code">s_B = A^b mod p</text>
+  <text x="856" y="760" class="toy">18^7 mod 23 = 6</text>
+
+  <!-- phase 5 -->
+  <rect x="220" y="840" width="860" height="75" rx="10" class="system"/>
+  <text x="650" y="868" class="code" text-anchor="middle">DiffieHellmanExchangeResult(alice_shared_secret, bob_shared_secret)</text>
+  <text x="650" y="892" class="text" text-anchor="middle">.successful is s_A == s_B; it is returned to the caller</text>
+  <text x="650" y="908" class="toy" text-anchor="middle">s_A = s_B = 6</text>
+
+  <!-- events column -->
+  <g transform="translate(1120, 0)">
+    <rect x="0" y="205" width="236" height="80" rx="8" class="events"/>
+    <circle cx="16" cy="230" r="9" fill="#4f6bd8"/><text x="16" y="234" class="num" text-anchor="middle">1</text>
+    <text x="32" y="234" class="event">PARAMETERS_SELECTED</text>
+    <text x="32" y="250" class="event-actor">SYSTEM</text>
+    <circle cx="16" cy="266" r="9" fill="#4f6bd8"/><text x="16" y="270" class="num" text-anchor="middle">2</text>
+    <text x="32" y="270" class="event">PARAMETERS_VALIDATED</text>
+
+    <rect x="0" y="345" width="236" height="120" rx="8" class="events"/>
+    <circle cx="16" cy="366" r="9" fill="#4f6bd8"/><text x="16" y="370" class="num" text-anchor="middle">3</text>
+    <text x="32" y="370" class="event">PRIVATE_KEY_GENERATED</text>
+    <text x="32" y="385" class="event-actor">or …_PROVIDED · ALICE</text>
+    <circle cx="16" cy="403" r="9" fill="#4f6bd8"/><text x="16" y="407" class="num" text-anchor="middle">4</text>
+    <text x="32" y="407" class="event">PUBLIC_KEY_COMPUTED · ALICE</text>
+    <circle cx="16" cy="427" r="9" fill="#4f6bd8"/><text x="16" y="431" class="num" text-anchor="middle">5</text>
+    <text x="32" y="431" class="event">…GENERATED/PROVIDED · BOB</text>
+    <circle cx="16" cy="451" r="9" fill="#4f6bd8"/><text x="16" y="455" class="num" text-anchor="middle">6</text>
+    <text x="32" y="455" class="event">PUBLIC_KEY_COMPUTED · BOB</text>
+
+    <rect x="0" y="505" width="236" height="120" rx="8" class="events"/>
+    <circle cx="16" cy="526" r="9" fill="#4f6bd8"/><text x="16" y="530" class="num" text-anchor="middle">7</text>
+    <text x="32" y="530" class="event">PUBLIC_KEY_SENT · ALICE</text>
+    <circle cx="16" cy="550" r="9" fill="#4f6bd8"/><text x="16" y="554" class="num" text-anchor="middle">8</text>
+    <text x="32" y="554" class="event">PUBLIC_KEY_RECEIVED · BOB</text>
+    <circle cx="16" cy="580" r="9" fill="#4f6bd8"/><text x="16" y="584" class="num" text-anchor="middle">9</text>
+    <text x="32" y="584" class="event">PUBLIC_KEY_SENT · BOB</text>
+    <circle cx="16" cy="604" r="9" fill="#4f6bd8"/><text x="16" y="608" class="num" text-anchor="middle">10</text>
+    <text x="32" y="608" class="event">PUBLIC_KEY_RECEIVED · ALICE</text>
+
+    <rect x="0" y="665" width="236" height="120" rx="8" class="events"/>
+    <circle cx="16" cy="710" r="9" fill="#4f6bd8"/><text x="16" y="714" class="num" text-anchor="middle">11</text>
+    <text x="32" y="714" class="event">SHARED_SECRET_COMPUTED</text>
+    <text x="32" y="730" class="event-actor">ALICE</text>
+    <circle cx="16" cy="752" r="9" fill="#4f6bd8"/><text x="16" y="756" class="num" text-anchor="middle">12</text>
+    <text x="32" y="756" class="event">SHARED_SECRET_COMPUTED</text>
+    <text x="32" y="772" class="event-actor">BOB</text>
+
+    <rect x="0" y="840" width="236" height="75" rx="8" class="events"/>
+    <circle cx="16" cy="870" r="9" fill="#4f6bd8"/><text x="16" y="874" class="num" text-anchor="middle">13</text>
+    <text x="32" y="874" class="event">SHARED_SECRET_VERIFIED</text>
+    <text x="32" y="890" class="event-actor">SYSTEM</text>
+  </g>
+
+  <!-- notes -->
+  <text x="40" y="975" class="text">With an observer (e.g. ProtocolExecutionContext), each event becomes a frozen ProtocolEvent(sequence, event_type, actor, data); data holds raw values only.</text>
+  <text x="40" y="1000" class="text">The key pairs stay on the participants afterwards, so a second exchange with the same participants reuses them (traced as provided).</text>
+  <text x="40" y="1025" class="text">The Young–Yung device (setup.md) is a drop-in participant: it emits exactly the same thirteen events.</text>
+  <text x="40" y="1050" class="note">MODULAR_EXPONENTIATION_STARTED / _STEP / _COMPLETED are defined but never emitted (reserved for a square-and-multiply view).</text>
+</svg>

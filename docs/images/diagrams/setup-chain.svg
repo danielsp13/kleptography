@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1160" viewBox="0 0 1400 1160" font-family="Helvetica, Arial, sans-serif">
+  <!-- The Young–Yung SETUP on Diffie-Hellman: what the device derives and how
+       the attacker recovers it. Toy test vectors: p = 23, g = 2, q = 11,
+       X = 3, Y = 8, a = 2, b = 2, W = 3, H(v) = v mod 10 + 1, c1 = 6, t = 0. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font-size: 26px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-size: 15px; fill: #475569; }
+      .band-label { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; }
+      .heading { font-size: 16px; font-weight: 700; fill: #0f172a; }
+      .code { font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 14px; fill: #0f172a; }
+      .text { font-size: 13.5px; fill: #334155; }
+      .toy { font-size: 13px; fill: #059669; }
+      .note { font-size: 13px; fill: #64748b; font-style: italic; }
+      .num { font-size: 13px; font-weight: 700; fill: #ffffff; }
+      .edge { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edge-dashed { stroke: #94a3b8; stroke-width: 2; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow); }
+      .device-band { fill: #fff6f5; stroke: #f3b4ae; stroke-width: 1.2; }
+      .public-band { fill: #fff7ed; stroke: #fdba74; stroke-width: 1.2; }
+      .attacker-band { fill: #fdf2f8; stroke: #f0abfc; stroke-width: 1.2; }
+      .klepto { fill: #fdecea; stroke: #c62828; stroke-width: 1.8; }
+      .honest { fill: #eef2ff; stroke: #4f6bd8; stroke-width: 1.6; }
+      .value { fill: #ffffff; stroke: #ea580c; stroke-width: 1.6; }
+      .attack { fill: #ffffff; stroke: #a21caf; stroke-width: 1.6; }
+      .why { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.2; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="1160" fill="#ffffff"/>
+
+  <text x="40" y="48" class="title">Young–Yung SETUP: the device's chain and the attacker's recovery</text>
+  <text x="40" y="74" class="subtitle">Green values are the test vectors (toy group 23 / 2 / 11, X = 3, a = b = 2, W = 3, t = 0). The toy H(v) = v mod 10 + 1 is a test-only simplification.</text>
+
+  <!-- device band -->
+  <rect x="30" y="100" width="1340" height="330" rx="12" class="device-band"/>
+  <text x="50" y="128" class="band-label" fill="#c62828">COMPROMISED DEVICE · plays Alice · YoungYungDiffieHellmanParticipant</text>
+
+  <rect x="60" y="150" width="320" height="250" rx="10" class="honest"/>
+  <text x="76" y="178" class="heading">Exchange 1</text>
+  <text x="76" y="204" class="text">first generate_keypair(): no previous</text>
+  <text x="76" y="222" class="text">key, so c1 is honest and random</text>
+  <text x="76" y="252" class="code">c1 ∈ [1, q − 1]</text>
+  <text x="76" y="278" class="code">m1 = g^c1 mod p</text>
+  <text x="76" y="306" class="toy">c1 = 6, m1 = 2^6 mod 23 = 18</text>
+  <text x="76" y="340" class="note">generated inside perform_key_exchange,</text>
+  <text x="76" y="358" class="note">so it is traced as GENERATED</text>
+
+  <rect x="440" y="150" width="520" height="250" rx="10" class="klepto"/>
+  <text x="456" y="178" class="heading">Between exchanges: derive_setup(c1, t)</text>
+  <text x="456" y="204" class="text">the next generate_keypair() derives c2 from c1</text>
+  <text x="456" y="234" class="code">t ← random bit</text>
+  <text x="456" y="262" class="code">z = g^(c1 − W·t) · Y^(−a·c1 − b) mod p</text>
+  <text x="456" y="290" class="code">c2 = H(z)</text>
+  <text x="456" y="318" class="toy">t = 0: z = 2^6 · 8^(−14) mod 23 = 3, c2 = H(3) = 4</text>
+  <text x="456" y="350" class="text">kept as a SetupDerivation(c1, t, z, c2)</text>
+  <text x="456" y="372" class="note">device.derivations / device.last_derivation</text>
+
+  <rect x="1020" y="150" width="320" height="250" rx="10" class="honest"/>
+  <text x="1036" y="178" class="heading">Exchange 2</text>
+  <text x="1036" y="204" class="text">c2 already exists, so it is traced</text>
+  <text x="1036" y="222" class="text">as PRIVATE_KEY_PROVIDED</text>
+  <text x="1036" y="252" class="code">m2 = g^c2 mod p</text>
+  <text x="1036" y="280" class="toy">m2 = 2^4 mod 23 = 16</text>
+  <text x="1036" y="318" class="text">Every later generate_keypair()</text>
+  <text x="1036" y="336" class="text">chains again: c3 from c2, c4 from c3, …</text>
+
+  <path d="M 380 275 L 438 275" class="edge"/>
+  <path d="M 960 275 L 1018 275" class="edge"/>
+
+  <!-- public band -->
+  <rect x="30" y="460" width="1340" height="140" rx="12" class="public-band"/>
+  <text x="330" y="488" class="band-label" fill="#c2410c">PUBLIC TRANSCRIPT · what crossed the network</text>
+  <text x="330" y="510" class="note">Eve and the attacker record exactly the same values. Both m1 and m2 pass validate_public_key and look uniformly random.</text>
+
+  <rect x="140" y="525" width="160" height="56" rx="10" class="value"/>
+  <text x="220" y="552" class="code" text-anchor="middle">m1</text>
+  <text x="220" y="571" class="toy" text-anchor="middle">18</text>
+  <rect x="1100" y="525" width="160" height="56" rx="10" class="value"/>
+  <text x="1180" y="552" class="code" text-anchor="middle">m2</text>
+  <text x="1180" y="571" class="toy" text-anchor="middle">16</text>
+  <rect x="560" y="525" width="280" height="56" rx="10" class="value"/>
+  <text x="700" y="552" class="text" text-anchor="middle">Bob's honest keys B1, B2</text>
+  <text x="700" y="571" class="toy" text-anchor="middle">B2 = 13</text>
+
+  <path d="M 220 400 L 220 523" class="edge"/>
+  <path d="M 1180 400 L 1180 523" class="edge"/>
+
+  <!-- attacker band -->
+  <rect x="30" y="630" width="1340" height="380" rx="12" class="attacker-band"/>
+  <text x="330" y="658" class="band-label" fill="#a21caf">ATTACKER · YoungYungAttacker · knows the configuration and holds X</text>
+
+  <rect x="60" y="680" width="290" height="150" rx="10" class="attack"/>
+  <circle cx="82" cy="704" r="12" fill="#a21caf"/><text x="82" y="709" class="num" text-anchor="middle">1</text>
+  <text x="102" y="709" class="heading">compute_r</text>
+  <text x="76" y="742" class="code">r = m1^a · g^b mod p</text>
+  <text x="76" y="770" class="toy">r = 18^2 · 2^2 mod 23 = 8</text>
+  <text x="76" y="800" class="note">r = g^(a·c1 + b): public data only</text>
+
+  <rect x="380" y="680" width="290" height="150" rx="10" class="attack"/>
+  <circle cx="402" cy="704" r="12" fill="#a21caf"/><text x="402" y="709" class="num" text-anchor="middle">2</text>
+  <text x="422" y="709" class="heading">recover_z_candidates</text>
+  <text x="396" y="742" class="code">z1 = m1 / r^X</text>
+  <text x="396" y="766" class="code">z2 = z1 / g^W</text>
+  <text x="396" y="794" class="toy">(z1, z2) = (3, 9)</text>
+  <text x="396" y="816" class="note">one candidate per value of t</text>
+
+  <rect x="700" y="680" width="290" height="150" rx="10" class="attack"/>
+  <circle cx="722" cy="704" r="12" fill="#a21caf"/><text x="722" y="709" class="num" text-anchor="middle">3</text>
+  <text x="742" y="709" class="heading">candidate exponents</text>
+  <text x="716" y="742" class="code">(H(z1), H(z2))</text>
+  <text x="716" y="770" class="toy">(4, 10)</text>
+  <text x="716" y="800" class="note">SetupCandidates: from m1 alone</text>
+
+  <rect x="1020" y="680" width="320" height="150" rx="10" class="attack"/>
+  <circle cx="1042" cy="704" r="12" fill="#a21caf"/><text x="1042" y="709" class="num" text-anchor="middle">4</text>
+  <text x="1062" y="709" class="heading">match_candidates</text>
+  <text x="1036" y="742" class="code">keep c with g^c = m2</text>
+  <text x="1036" y="766" class="code">s2 = B2^c2 mod p</text>
+  <text x="1036" y="794" class="toy">2^4 = 16 → c2 = 4, t = 0; s2 = 18</text>
+  <text x="1036" y="816" class="note">no match: SetupRecoveryError</text>
+
+  <path d="M 350 755 L 378 755" class="edge"/>
+  <path d="M 670 755 L 698 755" class="edge"/>
+  <path d="M 990 755 L 1018 755" class="edge"/>
+  <path d="M 220 581 L 220 678" class="edge"/>
+  <path d="M 1180 581 L 1180 678" class="edge"/>
+  <path d="M 760 581 L 1110 678" class="edge-dashed"/>
+
+  <rect x="60" y="850" width="1280" height="140" rx="10" class="why"/>
+  <text x="80" y="878" class="heading">Why it works, and why only the attacker can do it</text>
+  <text x="80" y="906" class="code">r^X = g^(X·(a·c1 + b)) = Y^(a·c1 + b)</text>
+  <text x="560" y="906" class="code">z · Y^(a·c1 + b) = g^(c1 − W·t)</text>
+  <text x="80" y="934" class="text">The device hid z behind the mask Y^(a·c1 + b); the attacker rebuilds the same mask as r^X. So m1 / r^X = g^c1 · Y^(−a·c1 − b) is z for t = 0, and dividing by g^W gives z for t = 1.</text>
+  <text x="80" y="958" class="text">Anyone else sees r = g^(a·c1 + b) and Y = g^X, and computing Y^(a·c1 + b) from them is the computational Diffie-Hellman problem: a DH exchange hidden inside another.</text>
+  <text x="80" y="978" class="toy">r^X = 8^3 mod 23 = 6 = 8^14 mod 23 = Y^(a·c1 + b)</text>
+
+  <!-- notes -->
+  <text x="40" y="1050" class="text">(1, 2)-leakage: each pair of consecutive public keys (m1, m2) leaks the second exponent c2, never c1. The first exchange stays confidential.</text>
+  <text x="40" y="1076" class="text">Configuration (YoungYungConfiguration), public to anyone who reverse-engineers the device: Y = g^X, a, b, W (odd) and H. The attacker alone keeps X.</text>
+  <text x="40" y="1102" class="note">Device code keeps the paper's names (c1, m1, a, b, W, t, H). The interface writes a1, A1 for c1, m1 and α, β for a, b.</text>
+</svg>

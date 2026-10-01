@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000" font-family="Helvetica, Arial, sans-serif">
+  <!-- Package architecture of kleptography. Render to PNG with headless
+       Chrome (see docs/README.md, "Diagrams"). -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .title { font-size: 26px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-size: 15px; fill: #475569; }
+      .band { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; fill: #475569; }
+      .name { font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 17px; font-weight: 700; fill: #0f172a; }
+      .text { font-size: 13.5px; fill: #334155; }
+      .note { font-size: 13px; fill: #64748b; font-style: italic; }
+      .edge { stroke: #334155; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .honest { fill: #eef2ff; stroke: #4f6bd8; stroke-width: 1.6; }
+      .klepto { fill: #fdecea; stroke: #c62828; stroke-width: 1.8; }
+      .app { fill: #f1f5f9; stroke: #475569; stroke-width: 1.6; }
+      .math { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .external { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 6 4; }
+      .klepto-label { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; fill: #c62828; }
+      .klepto-note { font-size: 13px; fill: #9f1d1d; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="1000" fill="#ffffff"/>
+
+  <text x="40" y="48" class="title">Package architecture</text>
+  <text x="40" y="74" class="subtitle">Every arrow is an import. Dependencies only point downwards (app → crypto → math), and no honest package imports a kleptographic one.</text>
+
+  <!-- app -->
+  <rect x="30" y="100" width="1340" height="100" rx="12" class="app"/>
+  <text x="50" y="132" class="name">kleptography.app</text>
+  <text x="50" y="158" class="text">Streamlit presentation layer: pages/ (one package per section), components/, content/.</text>
+  <text x="50" y="180" class="text">Orchestrates crypto objects and renders them; it holds no cryptographic or mathematical logic.</text>
+  <rect x="1110" y="122" width="240" height="56" rx="8" class="external"/>
+  <text x="1230" y="146" class="text" text-anchor="middle">streamlit · jinja2</text>
+  <text x="1230" y="166" class="note" text-anchor="middle">external</text>
+
+  <path d="M 700 200 L 700 248" class="edge"/>
+  <text x="712" y="230" class="note">imports crypto only, never math</text>
+
+  <!-- crypto band -->
+  <rect x="30" y="250" width="1340" height="470" rx="12" fill="#fafbff" stroke="#cbd5e1" stroke-width="1.4"/>
+  <text x="50" y="280" class="band">KLEPTOGRAPHY.CRYPTO</text>
+  <text x="270" y="280" class="note">honest schemes on the left, SETUP code on the right</text>
+  <rect x="950" y="262" width="406" height="444" rx="10" fill="#fff6f5" stroke="#f3b4ae" stroke-width="1.2"/>
+
+  <!-- row 1 -->
+  <rect x="60" y="300" width="230" height="90" rx="10" class="honest"/>
+  <text x="76" y="330" class="name">dh.groups.rfc7919</text>
+  <text x="76" y="354" class="text">ffdhe2048() … ffdhe8192()</text>
+  <text x="76" y="374" class="text">standardized groups</text>
+
+  <rect x="400" y="300" width="330" height="90" rx="10" class="honest"/>
+  <text x="416" y="330" class="name">channel</text>
+  <text x="416" y="354" class="text">run_session, run_channel</text>
+  <text x="416" y="374" class="text">ChannelRun → ChannelTranscript</text>
+
+  <rect x="980" y="300" width="346" height="90" rx="10" class="klepto"/>
+  <text x="996" y="330" class="name">channel.setup</text>
+  <text x="996" y="354" class="text">intercept_channel → ChannelInterception</text>
+  <text x="996" y="374" class="text">also imports dh, kdf, aead and math</text>
+
+  <!-- row 2 -->
+  <rect x="60" y="450" width="320" height="90" rx="10" class="honest"/>
+  <text x="76" y="480" class="name">dh</text>
+  <text x="76" y="504" class="text">parameters, validation, participant,</text>
+  <text x="76" y="524" class="text">perform_key_exchange (five phases)</text>
+
+  <rect x="420" y="450" width="220" height="90" rx="10" class="honest"/>
+  <text x="436" y="480" class="name">kdf</text>
+  <text x="436" y="504" class="text">derive_key</text>
+  <text x="436" y="524" class="text">SP 800-56C, SHA-256</text>
+
+  <rect x="680" y="450" width="240" height="90" rx="10" class="honest"/>
+  <text x="696" y="480" class="name">aead</text>
+  <text x="696" y="504" class="text">encrypt / decrypt</text>
+  <text x="696" y="524" class="text">AES-256-GCM</text>
+
+  <rect x="980" y="450" width="346" height="90" rx="10" class="klepto"/>
+  <text x="996" y="480" class="name">dh.setup</text>
+  <text x="996" y="504" class="text">YoungYungDiffieHellmanParticipant,</text>
+  <text x="996" y="524" class="text">YoungYungAttacker, configuration, H</text>
+
+  <!-- row 3 -->
+  <rect x="60" y="600" width="200" height="80" rx="10" class="honest"/>
+  <text x="76" y="630" class="name">dh.tracing</text>
+  <text x="76" y="654" class="text">events, observer, context</text>
+
+  <rect x="420" y="600" width="500" height="80" rx="10" class="external"/>
+  <text x="670" y="630" class="text" text-anchor="middle">cryptography (external): ConcatKDFHash · AESGCM · SHAKE-256</text>
+  <text x="670" y="654" class="note" text-anchor="middle">primitives are never reimplemented (dh.setup uses SHAKE-256 for H)</text>
+
+  <text x="1153" y="626" class="klepto-label" text-anchor="middle">KLEPTOGRAPHIC</text>
+  <text x="1153" y="650" class="klepto-note" text-anchor="middle">Isolated: honest packages never import it</text>
+  <text x="1153" y="670" class="klepto-note" text-anchor="middle">(checked by isolation tests)</text>
+
+  <!-- math -->
+  <rect x="30" y="770" width="1340" height="100" rx="12" class="math"/>
+  <text x="50" y="802" class="name">kleptography.math</text>
+  <text x="50" y="828" class="text">modular.py: mod_pow, mod_inverse, is_coprime</text>
+  <text x="50" y="850" class="text">primes.py: generate_safe_prime, generate_subgroup_generator</text>
+  <rect x="1110" y="792" width="240" height="56" rx="8" class="external"/>
+  <text x="1230" y="816" class="text" text-anchor="middle">sympy</text>
+  <text x="1230" y="836" class="note" text-anchor="middle">external</text>
+
+  <!-- edges -->
+  <path d="M 175 390 L 175 448" class="edge"/>
+  <path d="M 460 390 L 320 448" class="edge"/>
+  <path d="M 540 390 L 530 448" class="edge"/>
+  <path d="M 660 390 L 780 448" class="edge"/>
+  <path d="M 980 345 L 732 345" class="edge"/>
+  <path d="M 1153 390 L 1153 448" class="edge"/>
+  <path d="M 1000 540 L 1000 570 L 350 570 L 350 542" class="edge"/>
+  <text x="700" y="563" class="note" text-anchor="middle">extends the honest participant</text>
+  <path d="M 160 540 L 160 598" class="edge"/>
+  <path d="M 530 540 L 530 598" class="edge"/>
+  <path d="M 800 540 L 800 598" class="edge"/>
+  <path d="M 300 540 L 300 768" class="edge"/>
+  <path d="M 1300 540 L 1300 768" class="edge"/>
+
+  <!-- legend -->
+  <g transform="translate(40, 910)">
+    <path d="M 0 10 L 50 10" class="edge"/>
+    <text x="62" y="15" class="text">imports</text>
+    <rect x="160" y="0" width="34" height="20" rx="4" class="honest"/>
+    <text x="204" y="15" class="text">honest package</text>
+    <rect x="340" y="0" width="34" height="20" rx="4" class="klepto"/>
+    <text x="384" y="15" class="text">kleptographic package (SETUP)</text>
+    <rect x="610" y="0" width="34" height="20" rx="4" class="external"/>
+    <text x="654" y="15" class="text">external library</text>
+    <text x="0" y="50" class="note">Only the main imports are drawn (e.g. channel also uses dh.tracing). kdf and aead import nothing else from the project, so future targets (RSA, ML-DSA) can reuse them.</text>
+  </g>
+</svg>

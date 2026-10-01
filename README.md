@@ -163,6 +163,9 @@ recovered = attacker.recover_shared_secret(
 assert recovered == second.bob_shared_secret
 ```
 
+Every package is documented in depth, with runnable examples and diagrams,
+in the [documentation](docs/README.md).
+
 ## Project structure
 
 ```text
@@ -180,7 +183,28 @@ src/kleptography/
 ```
 
 Dependencies flow one way, `app → crypto → math`: the cryptographic core
-never imports the interface.
+never imports the interface. [Architecture](docs/architecture.md) explains
+these rules and how honest and kleptographic code stay apart.
+
+## Documentation
+
+The [`docs/`](docs/README.md) folder documents the library behind the app:
+what each package implements, how the pieces connect and why. Every page
+has examples you can run, based on the same toy group as the tests.
+
+| Page | Contents |
+| --- | --- |
+| [Architecture](docs/architecture.md) | Layers, dependencies, isolation of kleptographic code, shared conventions |
+| [Number theory](docs/math.md) | Modular arithmetic, safe primes and subgroup generators |
+| [Diffie-Hellman](docs/dh.md) | Parameters, participants, the five phases of the exchange, tracing, RFC 7919 groups |
+| [Young–Yung SETUP](docs/setup.md) | The backdoored device, the attacker, the equations and their test vectors |
+| [Primitives](docs/primitives.md) | The SP 800-56C key derivation and AES-256-GCM |
+| [Encrypted channel](docs/channel.md) | Sessions, the private and public views, and the channel's attacker package |
+| [Interface](docs/app.md) | How each interactive section uses the library |
+
+<p align="center">
+  <img src="docs/images/diagrams/architecture.png" alt="Package architecture" width="800">
+</p>
 
 ## Development
 
