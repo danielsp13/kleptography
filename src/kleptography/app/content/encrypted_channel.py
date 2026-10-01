@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from kleptography.app.content.callouts import CalloutComposer
 from kleptography.app.content.composer import ContentComposer
+from kleptography.app.content.diffie_hellman import StepDefinition
 from kleptography.app.content.young_yung_setup import REFERENCE
 
 CIPHERSUITE_NAME = "KLEPTO_DHE_FFDHE_WITH_AES_256_GCM_SHA256"
@@ -32,6 +33,72 @@ STANDARDS = (
     "RFC 7919, <em>Negotiated Finite Field Diffie-Hellman Ephemeral Parameters "
     "for TLS</em>, 2016."
 )
+
+
+DEFAULT_MESSAGES: tuple[tuple[str, str], ...] = (
+    ("Hi Bob, are we still on for tomorrow?", "Yes. Meeting at 10:00 in room B."),
+    ("The access code for the lab is 4721.", "Thanks, I will change it next week."),
+    ("Budget approved: 25 000 EUR for Q3.", "Great news, I will tell the team."),
+    ("Please keep this between us.", "Understood, it stays here."),
+    ("Last one: delete the draft.", "Done. Talk to you tomorrow."),
+)
+"""Default texts of each session: (Alice to Bob, Bob to Alice)."""
+
+
+def session_step_definitions(number: int) -> tuple[StepDefinition, ...]:
+    """
+    Return the three explanatory steps of session ``number``.
+
+    Args:
+        number: The session number, starting at 1.
+
+    Returns:
+        The key exchange, key derivation and messages steps, with the
+        session index substituted into their formulas.
+    """
+    i = number
+    return (
+        StepDefinition(
+            title="Ephemeral key exchange",
+            explanation=(
+                "Alice's device and Bob generate brand-new key pairs for this "
+                "session and run an ordinary Diffie-Hellman exchange. Both "
+                "end up with the same shared secret."
+            ),
+            formula=(
+                rf"A_{i} = g^{{a_{i}}}, \quad B_{i} = g^{{b_{i}}}, \qquad "
+                rf"s_{i} = B_{i}^{{a_{i}}} = A_{i}^{{b_{i}}} \bmod p"
+            ),
+        ),
+        StepDefinition(
+            title="Session key derivation",
+            explanation=(
+                "Each party encodes its shared secret as a fixed-length "
+                "big-endian byte string $Z$ (as long as $p$) and hashes it "
+                "with a counter and a fixed label, $\\mathit{OtherInfo}$. "
+                "Nothing random is involved: equal secrets give equal keys."
+            ),
+            formula=(
+                rf"K_{i} = \mathrm{{SHA\text{{-}}256}}(\texttt{{00000001}} "
+                rf"\,\Vert\, Z_{i} \,\Vert\, \mathit{{OtherInfo}})"
+            ),
+        ),
+        StepDefinition(
+            title="Encrypted messages",
+            explanation=(
+                f"The sender encrypts each message under $K_{i}$ with a fresh "
+                "random nonce $n$. The nonce, the ciphertext $c$ and the tag "
+                "$\\tau$ travel over the network. The recipient decrypts "
+                "with its own copy of the key; the tag proves that the "
+                "message was not modified and that both keys are equal."
+            ),
+            formula=(
+                rf"(c,\ \tau) = \mathrm{{AES\text{{-}}GCM}}_{{K_{i}}}(n,\ m)"
+                rf" \qquad m = \mathrm{{AES\text{{-}}GCM}}^{{-1}}_{{K_{i}}}"
+                rf"(n,\ c,\ \tau)"
+            ),
+        ),
+    )
 
 
 def build_channel_intro_content() -> str:
@@ -277,3 +344,55 @@ def build_channel_concept_content() -> str:
     )
 
     return content.build()
+
+
+def build_participant_intro_content() -> str:
+    """Return the introduction of the participant's point of view."""
+    content = ContentComposer()
+
+    content.paragraph(
+        "Take the place of Alice and Bob. Choose a group, decide whether "
+        "Alice's device is honest or carries the SETUP, write the messages "
+        "of each session and run the channel. You will see everything the "
+        "participants see: their ephemeral keys, the session keys and every "
+        "message before and after encryption.",
+    )
+
+    content.paragraph(
+        "Run it once with each device and compare: from the participants' seat, ",
+        content.bold("both channels look exactly the same"),
+        ".",
+    )
+
+    return content.build()
+
+
+def build_device_choice_content() -> str:
+    """Return the callout that explains what the device choice changes."""
+    return CalloutComposer.info(
+        content=(
+            "The device generates Alice's ephemeral keys. An honest device "
+            "picks every key at random. A compromised one picks the first "
+            "key at random and derives each later key from the previous one "
+            "and the attacker's public key <em>Y</em>. Neither Alice nor Bob "
+            "can see this choice: it happens inside the device. The "
+            "attacker's backdoor is shown in the <strong>Attacker</strong> "
+            "tab."
+        ),
+        title="What changes inside the device",
+    ).build()
+
+
+def build_indistinguishable_content() -> str:
+    """Return the callout that closes the participant's point of view."""
+    return CalloutComposer.note(
+        content=(
+            "Every session above has valid public keys, matching session "
+            "keys and messages that Bob reads correctly. With an honest or a "
+            "compromised device, this view is identical: nothing the "
+            "participants can observe reveals the SETUP. Switch to the "
+            "<strong>Attacker</strong> tab to see what the same traffic "
+            "looks like from the other side."
+        ),
+        title="Nothing looks wrong",
+    ).build()

@@ -19,7 +19,12 @@ from kleptography.app.content.diffie_hellman import (
     public_key_formula,
     shared_secret_formula,
 )
-from kleptography.app.content.numbers import NumberFormat, format_integer, is_small
+from kleptography.app.content.numbers import (
+    NumberFormat,
+    format_bytes,
+    format_integer,
+    is_small,
+)
 from kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
 
 # Code blocks taller than this scroll vertically (never horizontally).
@@ -90,6 +95,47 @@ def render_component_value(
         f"{label} &nbsp; {_BADGE[visibility]} &nbsp; :gray[{value.bit_length()} bits]"
     )
     st.code(text, language="text", wrap_lines=True, height=height)
+
+
+def render_component_bytes(
+    label: str,
+    data: bytes,
+    *,
+    visibility: Visibility,
+) -> None:
+    """
+    Render a labeled byte string in hexadecimal, in a wrapping code block.
+
+    Args:
+        label: Markdown label, typically including a LaTeX symbol.
+        data: The bytes to display.
+        visibility: Who can see the value.
+    """
+    text = format_bytes(data)
+    height = _MAX_VALUE_HEIGHT if len(text) > _LONG_VALUE_CHARACTERS else "content"
+
+    st.markdown(f"{label} &nbsp; {_BADGE[visibility]} &nbsp; :gray[{len(data)} bytes]")
+    st.code(text, language="text", wrap_lines=True, height=height)
+
+
+def render_component_text(
+    label: str,
+    text: str,
+    *,
+    visibility: Visibility,
+) -> None:
+    """
+    Render a labeled human-readable text, such as a message, in a code block.
+
+    Args:
+        label: Markdown label.
+        text: The text to display, shown verbatim.
+        visibility: Who can see the text.
+    """
+    st.markdown(
+        f"{label} &nbsp; {_BADGE[visibility]} &nbsp; :gray[{len(text)} characters]"
+    )
+    st.code(text, language="text", wrap_lines=True)
 
 
 def render_component_protocol_step(

@@ -77,6 +77,26 @@ def format_integer(
     return " ".join(digits[i : i + size] for i in range(0, len(digits), size))
 
 
+def format_bytes(data: bytes) -> str:
+    """
+    Format a byte string as upper-case hexadecimal in groups of four bytes.
+
+    Byte strings (encoded secrets, keys, nonces, ciphertexts, tags) are
+    always shown in hexadecimal, whatever the selected number format, with
+    the same grouping as hexadecimal integers (``0011AABB 01020304``).
+
+    Args:
+        data: The bytes to format.
+
+    Returns:
+        The grouped representation of ``data``, or an empty string.
+    """
+    digits = data.hex().upper()
+    size = _GROUP_SIZE[NumberFormat.HEXADECIMAL]
+
+    return " ".join(digits[i : i + size] for i in range(0, len(digits), size))
+
+
 def is_small(*values: int) -> bool:
     """
     Return whether all values are short enough to be shown inside formulas.
