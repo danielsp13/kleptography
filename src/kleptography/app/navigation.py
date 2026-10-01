@@ -54,6 +54,25 @@ def young_yung_setup_page() -> StreamlitPage:
     )
 
 
+def encrypted_channel_page() -> StreamlitPage:
+    """Return the encrypted channel compromised by the SETUP."""
+    from kleptography.app.pages.encrypted_channel import (
+        render_page_encrypted_channel,
+    )
+
+    return st.Page(
+        render_page_encrypted_channel,
+        title="Encrypted channel · Kleptography",
+        icon="🔐",
+        url_path="encrypted-channel",
+    )
+
+
 def all_pages() -> list[StreamlitPage]:
     """Return every page of the application, the default page first."""
-    return [home_page(), diffie_hellman_page(), young_yung_setup_page()]
+    return [
+        home_page(),
+        diffie_hellman_page(),
+        young_yung_setup_page(),
+        encrypted_channel_page(),
+    ]

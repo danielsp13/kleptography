@@ -8,7 +8,11 @@ from kleptography.app.components.navigation import (
 )
 from kleptography.app.content.callouts import CalloutComposer
 from kleptography.app.content.home import build_home_content
-from kleptography.app.navigation import diffie_hellman_page, young_yung_setup_page
+from kleptography.app.navigation import (
+    diffie_hellman_page,
+    encrypted_channel_page,
+    young_yung_setup_page,
+)
 
 
 def render_page_home() -> None:
@@ -55,6 +59,17 @@ def _render_sections() -> None:
                 ),
                 status="Available",
                 url_path=young_yung_setup_page().url_path,
+            ),
+            SectionCard(
+                title="Encrypted channel compromised by the SETUP",
+                description=(
+                    "Turn the exchange into a real channel: ephemeral keys, a "
+                    "key derivation and AES-GCM over several sessions. Use it "
+                    "as a participant, then read it as the attacker, without "
+                    "breaking a single cipher."
+                ),
+                status="Available",
+                url_path=encrypted_channel_page().url_path,
             ),
         ]
     )
