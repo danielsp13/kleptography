@@ -40,6 +40,11 @@ class DiffieHellmanParameters:
         """Return the bit length of the prime modulus."""
         return self.prime.bit_length()
 
+    @property
+    def byte_length(self) -> int:
+        """Return the number of bytes needed to encode any value modulo p."""
+        return (self.prime.bit_length() + 7) // 8
+
     @classmethod
     def generate_toy(cls, bits: int = 32) -> "DiffieHellmanParameters":
         """

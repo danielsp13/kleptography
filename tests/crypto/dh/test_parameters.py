@@ -76,6 +76,21 @@ def test_bit_length_returns_prime_bit_length() -> None:
     assert parameters.bit_length == 5
 
 
+@pytest.mark.parametrize(
+    ("prime", "generator", "subgroup_order", "expected"),
+    [(23, 2, 11, 1), (263, 4, 131, 2), (167, 4, 83, 1)],
+)
+def test_byte_length_rounds_bit_length_up(
+    prime: int, generator: int, subgroup_order: int, expected: int
+) -> None:
+    """byte_length is ceil(bit_length / 8): 5 and 8 bits fit in 1 byte, 9 need 2."""
+    parameters = DiffieHellmanParameters(
+        prime=prime, generator=generator, subgroup_order=subgroup_order
+    )
+
+    assert parameters.byte_length == expected
+
+
 def test_from_standard_preserves_parameters() -> None:
     """from_standard should construct the supplied parameters unchanged."""
     prime = 23

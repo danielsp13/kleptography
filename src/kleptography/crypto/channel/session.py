@@ -82,7 +82,7 @@ def run_session(
     assert alice.public_key is not None
     assert bob.public_key is not None
 
-    secret_length = (alice.parameters.prime.bit_length() + 7) // 8
+    secret_length = alice.parameters.byte_length
     derivations = {
         Actor.ALICE: derive_key(
             result.alice_shared_secret, secret_length=secret_length
