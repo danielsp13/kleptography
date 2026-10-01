@@ -80,7 +80,8 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Honest DH participant and protocol | Done. Five-phase execution model; supports known (loaded) and generated keys. |
 | Protocol tracing (observer + event timeline) | Done. Consumed by the Diffie-Hellman section. |
 | Streamlit shell: header, footer, home page, content composer | Done. Composer supports LaTeX. |
-| Hidden navigation (home ↔ sections, no sidebar) | Done. |
+| Hidden navigation (home ↔ sections) | Done. |
+| In-section navigation (sidebar "On this page" + sticky tabs) | Done for all three sections (DH has no tabs: sidebar only). |
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
 | Young–Yung SETUP section (`/young-yung-setup`) | Done. Tabs: idea (SETUP, (1,2)-leakage), formulae (full derivation), experiment (two exchanges + attacker recovery, 8 steps). |
 | Young–Yung DH SETUP (kleptographic DH) | Done, fully tested. Its former open points are closed by the maintainer's decision (see 4.6). |
@@ -140,15 +141,18 @@ src/kleptography/
     ├── navigation.py        # page registry: home_page(), diffie_hellman_page(),
     │                        # young_yung_setup_page(), encrypted_channel_page(),
     │                        # all_pages()
-    ├── pages/               # home.py, diffie_hellman.py, young_yung_setup.py,
-    │                        # encrypted_channel.py
-    ├── components/          # header, footer, navigation (back link, section card),
+    ├── pages/               # home.py; one package per section (see 4.5):
+    │                        # diffie_hellman/, young_yung_setup/,
+    │                        # encrypted_channel/
+    ├── components/          # header, footer, navigation (back link, section card,
+    │                        # section tabs and sidebar),
     │                        # controls (shared DH widgets), protocol, young_yung_setup,
     │                        # encrypted_channel
     ├── content/             # composer, callouts, home, diffie_hellman,
     │                        # young_yung_setup, encrypted_channel, numbers
     ├── html/                # templates/*.html, loader.py, renderer.py
-    ├── css/                 # styles/{header,footer,protocol}.css, loader.py
+    ├── css/                 # styles/{header,footer,protocol,section_cards,
+    │                        # section_navigation}.css, loader.py
     └── assets/              # logos/kleptofox.png, loader.py
 ```
 
@@ -299,8 +303,9 @@ imports `kleptography.*` as an installed package, which `uv sync` sets up.
 #### Navigation
 
 `main.main()` calls `st.set_page_config(...)` and then
-`st.navigation(all_pages(), position="hidden").run()`. There is **no
-sidebar**: pages link to each other with `st.page_link`.
+`st.navigation(all_pages(), position="hidden").run()`. Streamlit's page
+menu is hidden: pages link to each other with `st.page_link`. The home page
+has no sidebar; a section may render its own (see "Section navigation").
 
 - `app/navigation.py` defines one factory per page: `home_page()` (default,
   URL `/`), `diffie_hellman_page()` (URL `/diffie-hellman`),
@@ -311,9 +316,24 @@ sidebar**: pages link to each other with `st.page_link`.
 - Page modules import `navigation.py` to build links, so the factories
   import the page renderers **inside the function body**. This is the
   deliberate cycle-breaker; do not move those imports to module level.
-- To add a page: write `render_page_<name>()` in `pages/`, add a factory in
-  `navigation.py`, add it to `all_pages()`, and add a `SectionCard` for it
-  in `pages/home.py`. Start the page with `render_component_back_home()`.
+- **Page packages.** Every section is a package in `pages/` with one module
+  per concern, so its layout reads at a glance in `page.py`; `home.py` stays
+  a single module. Modules: `page.py` (`render_page_<name>`: intro, tabs or
+  sections, sidebar, footer; layout only), `outline.py` (the tabs and
+  headings for the tabs and the sidebar), `state.py` (session state and
+  widget keys shared by several modules), `experiment.py` (the run of the
+  crypto API, never `st.*`), and one module per tab or part (`sections.py`
+  and `timeline.py` in DH and SETUP; `participant.py`, `attacker.py` and
+  `workbench.py` in the channel). `__init__.py` holds the section docstring
+  and re-exports `render_page_<name>`, so `navigation.py` imports it from
+  the package. Names used by another module of the package are public (no
+  underscore); helpers used by one module stay private, and so do keys used
+  by one module only (e.g. `ch_device_kind`), which stay inline there.
+- To add a page: create its package in `pages/` (`render_page_<name>()` in
+  `page.py`), add a factory in `navigation.py`, add it to `all_pages()`, add
+  a `SectionCard` for it in `pages/home.py` and a `st.page_link` in
+  `components/navigation._render_sidebar_sections`. Start the page with
+  `render_component_back_home()`.
 - Home → section uses plain HTML links (see the home page section below),
   which cause a full page load: session state does not survive it.
   Section → home uses `st.page_link`, which navigates client-side.
@@ -346,10 +366,20 @@ soon". `st.html` sanitizes with DOMPurify: `href` survives but `target` is
 stripped unless it is `_blank`. The description is plain text, because it
 is inserted into HTML and not rendered as Markdown.
 
-#### Diffie-Hellman section (`pages/diffie_hellman.py`)
+#### Diffie-Hellman section (`pages/diffie_hellman/`)
 
 The page only orchestrates the `crypto` API and delegates text to `content/`
-and rendering to `components/`:
+and rendering to `components/`. Modules (see "Page packages"):
+
+```text
+pages/diffie_hellman/
+├── page.py         # render_page_diffie_hellman: intro, sections, timeline, sidebar
+├── outline.py      # ANCHORS (no tabs)
+├── state.py        # dh, dh_run, dh_revealed
+├── sections.py     # render_{parameters,private_keys,run}_section: sections 1–3
+├── experiment.py   # ExchangeRun, run_exchange (crypto orchestration, no st.*)
+└── timeline.py     # render_timeline_section
+```
 
 ```text
 render_page_diffie_hellman()
@@ -368,16 +398,18 @@ render_page_diffie_hellman()
    │     text inputs dh_alice_key / dh_bob_key parsed with parse_integer
    │     (decimal, or hex with 0x; spaces ignored). Text, not number_input,
    │     because JS numbers lose precision above 2^53.
-   ├── 3 · run: DiffieHellmanParticipant ×2 (+ load_private_key if chosen)
-   │     → perform_key_exchange(observer=ProtocolExecutionContext())
-   │     → session_state["dh_run"] = ExchangeRun(parameters, build_protocol_steps(events))
-   │     → session_state["dh_revealed"] = 1; InvalidPrivateKey → st.error
-   └── 4 · timeline: progress bar, steps[:revealed] via
+   ├── 3 · run: run_exchange(parameters, private_keys): DiffieHellmanParticipant
+   │     ×2 (+ load_private_key if chosen) → perform_key_exchange(observer=
+   │     ProtocolExecutionContext()) → ExchangeRun(parameters,
+   │     build_protocol_steps(events)) in session_state["dh_run"];
+   │     session_state["dh_revealed"] = 1; InvalidPrivateKey → st.error
+   ├── 4 · timeline: progress bar, steps[:revealed] via
          render_component_protocol_step, then render_component_step_navigation
          (Next step / Show all steps / Start over; on_click callbacks update
          dh_revealed; button keys dh_revealed_{next,all,restart}). If the current
          parameters differ from ExchangeRun.parameters, the run is stale:
          an info message replaces the timeline.
+   └── render_component_page_sidebar(ANCHORS, key_prefix="dh") (no tabs)
 ```
 
 - **`content/diffie_hellman.py`** turns the timeline into teaching material
@@ -437,17 +469,35 @@ render_page_diffie_hellman()
   wrap **only at spaces** (`word-break: normal`, `overflow-wrap: anywhere`
   as a fallback), which keeps digit groups aligned. Do not use
   `break-all`: it splits groups and breaks the alignment. Long KaTeX
-  display formulas scroll inside themselves.
+  display formulas scroll inside themselves. It also enlarges the
+  navigation controls, using the selectors of Streamlit 1.63: tabs
+  (`[data-testid="stTab"]`, indicator `.react-aria-SelectionIndicator`),
+  segmented controls (`button[data-variant="segmented_control"]`), the
+  progress bar and the step navigation buttons, which
+  `render_component_step_navigation` wraps in a container keyed
+  `step-navigation-<state_key>`. Recheck these selectors after a Streamlit
+  upgrade.
 
-#### Young–Yung SETUP section (`pages/young_yung_setup.py`)
+#### Young–Yung SETUP section (`pages/young_yung_setup/`)
 
 Mirrors the DH section, told from the attacker's point of view. Session and
-widget keys use the `yy_` prefix.
+widget keys use the `yy_` prefix. Modules (see "Page packages"):
+
+```text
+pages/young_yung_setup/
+├── page.py         # render_page_young_yung_setup: intro, tabs, sidebar, footer
+├── outline.py      # TABS (SectionTab + PageAnchor)
+├── state.py        # yy, yy_tab, yy_backdoor, yy_run, yy_revealed
+├── sections.py     # render_experiment: the Experiment tab, sections 1–4
+├── experiment.py   # ChosenKeys, run_experiment (no st.*)
+└── timeline.py     # render_timeline_section
+```
 
 ```text
 render_page_young_yung_setup()
    ├── css + back link + title + build_setup_intro_content()
-   ├── st.tabs (stateless, all tabs render; widget state survives switching)
+   ├── render_component_section_tabs(TABS, state_key="yy_tab"), and after
+   │   them render_component_section_sidebar (all headings, always shown)
    │   ├── "The idea":   build_setup_concept_content()   SETUP definition
    │   │                 (paraphrased), public key vs naive backdoor, roles,
    │   │                 (m, n)-leakage and why this one is (1,2), detection, stakes
@@ -457,13 +507,13 @@ render_page_young_yung_setup()
    │   │                 others cannot (CDH), (1,2)-leakage (why s1 is safe),
    │   │                 worked example (test vectors, toy H flagged),
    │   │                 implementation choices
-   │   └── "Experiment": _render_experiment()
+   │   └── "Experiment": render_experiment()
    │         number format + 1 · group (shared controls, prefix yy)
-   │         2 · backdoor: Backdoor(attacker, configuration) in
+   │         2 · backdoor: Backdoor.generate(parameters) in
    │             session_state["yy_backdoor"], regenerated when the group
    │             changes or on "Generate a new backdoor"
    │         3 · keys: Random | Chosen (a1, b1, b2 → ChosenKeys)
-   │         4 · run: _run_experiment() follows the 4.6 flow (device plays
+   │         4 · run: run_experiment() follows the 4.6 flow (device plays
    │             Alice, a new honest Bob per exchange) → SetupRun in yy_run
    │         timeline: 8 steps via render_component_setup_step, stale if the
    │             group or configuration changed
@@ -487,7 +537,10 @@ render_page_young_yung_setup()
   formulae tab shows the correspondence table (paper `c_i, m_i, a, b`). The
   `crypto` code and its comments and test vectors keep the paper's names
   (`c1`, `m1`, `multiplier_a`, `offset_b`).
-- **`components/young_yung_setup.py`**: `SetupRun` (parameters, attacker,
+- **`components/young_yung_setup.py`**: `Backdoor(attacker, configuration)`
+  with `Backdoor.generate(parameters)` (a new attacker and its
+  configuration), shared by the SETUP and channel sections, which each keep
+  their own caching in session state; `SetupRun` (parameters, attacker,
   configuration, both `ExchangeSummary`s, `SetupDerivation`,
   `SetupRecovery`, recovered secret), `render_component_backdoor` and
   `render_component_setup_step(number, run, *, display)`. The rejected
@@ -495,36 +548,52 @@ render_page_young_yung_setup()
   inferred t differs from the real one (both candidates hash to the same key
   in a tiny group), the recovery step explains it.
 
-#### Encrypted channel section (`pages/encrypted_channel.py`)
+#### Encrypted channel section (`pages/encrypted_channel/`)
 
 The last step of the Young–Yung case study (4.7): the same SETUP inside a
-complete channel. Session and widget keys use the `ch_` prefix. Three tabs:
+complete channel. Session and widget keys use the `ch_` prefix. Three tabs.
+
+Modules (see "Page packages"):
+
+```text
+pages/encrypted_channel/
+├── page.py         # render_page_encrypted_channel: intro, tabs, sidebar, footer
+├── outline.py      # TABS (SectionTab + PageAnchor) and sidebar_tabs()
+├── state.py        # session state and widget keys shared by several modules
+├── participant.py  # render_participant: sections 1–4 and the session tabs
+├── experiment.py   # run_experiment (crypto orchestration, no st.*)
+├── attacker.py     # render_attacker: sections 1, 2 and 4
+└── workbench.py    # render_workbench: section 3 of the attacker
+```
 
 ```text
 render_page_encrypted_channel()
    ├── css + back link + title + build_channel_intro_content()
    │   + st.page_link to the SETUP section (prerequisite)
+   ├── render_component_section_tabs(TABS, state_key="ch_tab"), and after
+   │   them render_component_section_sidebar (Attacker headings only once
+   │   there is a run)
    ├── "The idea":    build_channel_concept_content()  sessions and ephemeral
    │                  keys, the ciphersuite (illustrative name
    │                  CIPHERSUITE_NAME, flagged as not a registered TLS suite),
    │                  Kerckhoffs table, how the SETUP breaks the channel,
    │                  session 1 stays confidential, toy-group brute force
-   ├── "Participant": _render_participant()
+   ├── "Participant": render_participant()
    │     number format + 1 · group (shared controls, prefix ch)
-   │     Backdoor(attacker, configuration) in ch_backdoor, regenerated only
+   │     Backdoor.generate(parameters) in ch_backdoor, regenerated only
    │       when the group changes (it exists whatever device Alice uses)
    │     2 · Alice's device: DeviceKind HONEST | COMPROMISED (ch_device_kind)
    │     3 · messages: 2–5 sessions (ch_session_count), one message per
    │       direction, editable (ch_message_<i>_{alice,bob}, examples in
    │       DEFAULT_MESSAGES set through session_state so "Restore the example
    │       messages" can put them back); empty = skipped, non-ASCII = error
-   │     4 · run (spinner, warning from 6144 bits): _run_experiment() runs
+   │     4 · run (spinner, warning from 6144 bits): run_experiment() runs
    │       run_channel with the device or an honest participant and
    │       intercept_channel ONCE → ChannelExperiment in ch_run; ch_run_count
    │       is incremented
    │     one st.tab per session: render_component_channel_session (exchange,
    │       KDF, messages); stale if group, backdoor or device kind changed
-   └── "Attacker":    _render_attacker() on the last run (never the device kind)
+   └── "Attacker":    render_attacker() on the last run (never the device kind)
          number format (prefix ch_attacker)
          1 · what you know: group, ciphersuite, render_component_backdoor
          2 · transcript: render_component_transcript (one tab per session)
@@ -568,10 +637,51 @@ render_page_encrypted_channel()
   transcript,recovery,interception_summary}`. `render_component_recovery`
   takes `SetupCandidates` plus the recovered key or `None`.
 
+#### Section navigation (`components/navigation.py`)
+
+A section with tabs gets a sidebar and sticky tabs, so the reader moves
+around without scrolling back; a section without tabs (DH) gets only the
+sidebar. The sidebars list the `h2`/`h3` of the concept and formulae tabs and
+the numbered `st.header`s (`dh-*`, `yy-*`, `ch-*` anchors), never the
+timeline steps.
+
+- `SectionTab(title, icon, anchors)` describes a main tab (`.label` is
+  `"<icon> <title>"`, the tab label and its state value) and
+  `PageAnchor(label, anchor)` one of its headings. Page headings get stable
+  ids with `st.header(..., anchor="<prefix>-<name>")`; Markdown headings from
+  the composer keep the ids Streamlit derives from their text, so the page
+  lists those ids by hand (change both together).
+- `render_component_section_tabs(tabs, *, state_key)` renders
+  `st.tabs(..., key=state_key, on_change="rerun")` inside a container keyed
+  `section-tabs-<state_key>`. Tabs are stateful (every switch reruns) but all
+  of them still render, so widgets keep their values; never skip a tab with
+  `.open`, or its widgets lose their state.
+- `render_component_section_sidebar(tabs, *, state_key)` renders, in
+  `st.sidebar`: "On this page" (one button per tab, whose callback sets
+  `st.session_state[state_key]`; the active tab is tinted and lists its
+  headings as anchor links) and "Sections" (`st.page_link` to home and every
+  section; Streamlit highlights the current one). Call it after the tabs'
+  content, so a run made in this rerun is already visible (the channel hides
+  the Attacker headings until there is a run).
+- `render_component_page_sidebar(anchors, *, key_prefix)` is the same
+  sidebar for a section without tabs: "On this page" lists the anchors
+  directly (container `section-anchors-page-<prefix>`, not indented), then
+  "Sections". Both sidebars share `_render_sidebar_anchors` and
+  `_render_sidebar_sections`.
+- `css/styles/section_navigation.css` (injected by the sidebar) gives the
+  sidebar the header palette in both themes, makes only the keyed tab list
+  sticky (`top: 3.75rem`, under the 60 px header, translucent blurred
+  background because Streamlit exposes no theme variables) and sets
+  `scroll-margin-top` on headings so anchors land below the tabs. Selectors
+  are those of Streamlit 1.63; recheck them after an upgrade.
+- On narrow screens Streamlit collapses the sidebar. The same stylesheet
+  turns its faint expand toggle (`[data-testid="stExpandSidebarButton"]`)
+  into a pill labelled "On this page" (CSS `::after`), so readers notice it.
+
 #### UX rules for interactive sections
 
-- No sidebar. Every section is reachable from a home card and has a back
-  link to home.
+- No page menu. Every section is reachable from a home card and has a back
+  link to home; sections with tabs also have the sidebar above.
 - Cryptographic values always go in wrapped code blocks via
   `render_component_value` (integers), `render_component_bytes` (byte
   strings, always hexadecimal in groups of 4 bytes via `format_bytes`) or
