@@ -185,7 +185,9 @@ def render_component_step_navigation(
         revealed: Steps currently revealed.
         total: Steps in the timeline.
     """
-    next_column, all_column, restart_column = st.columns(3)
+    # The keyed container lets protocol.css enlarge these buttons only.
+    container = st.container(key=f"step-navigation-{state_key}")
+    next_column, all_column, restart_column = container.columns(3)
     next_column.button(
         "Next step",
         icon=":material/arrow_downward:",

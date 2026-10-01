@@ -32,3 +32,53 @@
     background-color: rgba(255, 145, 0, 0.14) !important;
     box-shadow: inset 4px 0 0 rgb(255, 145, 0);
 }
+
+/* ------------------------------------------------------------
+   Navigation controls
+   ------------------------------------------------------------ */
+
+/* Tabs (section tabs and per-session tabs) are the main way to move around
+   a section, so they are larger than Streamlit's default and their active
+   indicator is thicker. */
+[data-testid="stTab"] {
+    height: auto !important;
+    padding: 0.55rem 0.4rem !important;
+}
+
+[data-testid="stTab"] [data-testid="stMarkdownContainer"] p {
+    font-size: 1.15rem !important;
+    font-weight: 600;
+}
+
+[data-testid="stTab"] .react-aria-SelectionIndicator {
+    height: 3px !important;
+}
+
+/* Segmented controls (key mode, number format, device, session, ...). */
+[data-testid="stButtonGroup"] button[data-variant="segmented_control"] {
+    min-height: 2.6rem;
+    padding: 0.45rem 1.25rem !important;
+}
+
+[data-testid="stButtonGroup"] button[data-variant="segmented_control"] p {
+    font-size: 1.05rem !important;
+}
+
+/* Step-by-step timelines: progress bar and Next / Show all / Start over. */
+[data-testid="stProgress"] [data-testid="stMarkdownContainer"] p {
+    font-size: 1.05rem !important;
+    font-weight: 600;
+}
+
+[class*="st-key-step-navigation"] button {
+    min-height: 3rem;
+}
+
+[class*="st-key-step-navigation"] button p {
+    font-size: 1.1rem !important;
+    font-weight: 600;
+}
+
+[data-testid="stProgress"] [data-testid="stProgressBarTrack"] {
+    height: 0.6rem !important;
+}
