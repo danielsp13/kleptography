@@ -21,7 +21,13 @@ from kleptography.app.components.controls import (
     render_component_step_navigation,
 )
 from kleptography.app.components.footer import render_component_footer
-from kleptography.app.components.navigation import render_component_back_home
+from kleptography.app.components.navigation import (
+    PageAnchor,
+    SectionTab,
+    render_component_back_home,
+    render_component_section_sidebar,
+    render_component_section_tabs,
+)
 from kleptography.app.components.protocol import ValueDisplay
 from kleptography.app.components.young_yung_setup import (
     SETUP_STEP_COUNT,
@@ -52,9 +58,73 @@ from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
 
 # Widget and session state prefix, and session state keys.
 _PREFIX = "yy"
+_TAB = "yy_tab"
 _BACKDOOR = "yy_backdoor"
 _RUN = "yy_run"
 _REVEALED = "yy_revealed"
+
+# The tabs of the section and their headings, for the tabs and the sidebar.
+# The anchors of "The idea" and "Formulae" are the ones Streamlit derives
+# from the Markdown headings of build_setup_concept_content and
+# build_setup_formulae_content.
+_TABS = (
+    SectionTab(
+        "The idea",
+        ":material/lightbulb:",
+        (
+            PageAnchor("What is a SETUP?", "what-is-a-setup"),
+            PageAnchor(
+                "Why a public key makes the difference",
+                "why-a-public-key-makes-the-difference",
+            ),
+            PageAnchor("Who is who", "who-is-who"),
+            PageAnchor(
+                "How much leaks: (m, n)-leakage schemes",
+                "how-much-leaks-m-n-leakage-schemes",
+            ),
+            PageAnchor("Why is it so hard to detect?", "why-is-it-so-hard-to-detect"),
+            PageAnchor("What is at stake", "what-is-at-stake"),
+        ),
+    ),
+    SectionTab(
+        "Formulae",
+        ":material/function:",
+        (
+            PageAnchor("Notation", "notation"),
+            PageAnchor(
+                "Arithmetic in a subgroup of prime order",
+                "arithmetic-in-a-subgroup-of-prime-order",
+            ),
+            PageAnchor("What the device computes", "what-the-device-computes"),
+            PageAnchor("What the attacker computes", "what-the-attacker-computes"),
+            PageAnchor(
+                "Why the attacker recovers the key",
+                "why-the-attacker-recovers-the-key",
+            ),
+            PageAnchor(
+                "A Diffie-Hellman exchange hidden inside another",
+                "a-diffie-hellman-exchange-hidden-inside-another",
+            ),
+            PageAnchor("Why nobody else can do it", "why-nobody-else-can-do-it"),
+            PageAnchor(
+                "One key out of two: a (1,2)-leakage scheme",
+                "one-key-out-of-two-a-1-2-leakage-scheme",
+            ),
+            PageAnchor("Worked example", "worked-example"),
+            PageAnchor("Implementation choices", "implementation-choices"),
+        ),
+    ),
+    SectionTab(
+        "Experiment",
+        ":material/science:",
+        (
+            PageAnchor("1 · Choose the public parameters", "yy-parameters"),
+            PageAnchor("2 · The attacker builds the backdoor", "yy-backdoor"),
+            PageAnchor("3 · Choose the private keys", "yy-keys"),
+            PageAnchor("4 · Run the experiment", "yy-run"),
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,12 +154,8 @@ def render_page_young_yung_setup() -> None:
     st.title("Young–Yung SETUP on Diffie-Hellman")
     st.markdown(build_setup_intro_content(), unsafe_allow_html=True)
 
-    concept_tab, formulae_tab, experiment_tab = st.tabs(
-        [
-            ":material/lightbulb: The idea",
-            ":material/function: Formulae",
-            ":material/science: Experiment",
-        ]
+    concept_tab, formulae_tab, experiment_tab = render_component_section_tabs(
+        _TABS, state_key=_TAB
     )
 
     with concept_tab:
@@ -101,6 +167,7 @@ def render_page_young_yung_setup() -> None:
     with experiment_tab:
         _render_experiment()
 
+    render_component_section_sidebar(_TABS, state_key=_TAB)
     render_component_footer()
 
 
@@ -114,7 +181,7 @@ def _render_experiment() -> None:
 
     number_format = render_component_number_format(key_prefix=_PREFIX)
 
-    st.header("1 · Choose the public parameters")
+    st.header("1 · Choose the public parameters", anchor="yy-parameters")
     parameters = render_component_group_selection(
         key_prefix=_PREFIX, number_format=number_format
     )
@@ -135,7 +202,7 @@ def _render_backdoor_section(
     number_format: NumberFormat,
 ) -> Backdoor:
     """Render section 2 and return the current backdoor."""
-    st.header("2 · The attacker builds the backdoor")
+    st.header("2 · The attacker builds the backdoor", anchor="yy-backdoor")
     st.markdown(
         "The attacker generates its key pair $(X, Y)$ and the constants "
         "$\\alpha$, $\\beta$ and $W$, and ships them, except $X$, inside Alice's "
@@ -166,7 +233,7 @@ def _render_backdoor_section(
 
 def _render_private_keys_section() -> ChosenKeys | None:
     """Render section 3 and return the chosen keys, if any."""
-    st.header("3 · Choose the private keys")
+    st.header("3 · Choose the private keys", anchor="yy-keys")
     st.markdown(
         "The device picks $a_1$ for the first exchange and derives $a_2$ "
         "itself. Bob uses a fresh key in each exchange, $b_1$ and $b_2$. "
@@ -220,7 +287,7 @@ def _render_run_section(
     chosen_keys: ChosenKeys | None,
 ) -> None:
     """Render section 4 and run the experiment when the button is pressed."""
-    st.header("4 · Run the experiment")
+    st.header("4 · Run the experiment", anchor="yy-run")
 
     waiting_for_keys = (
         st.session_state.get("yy_key_mode") == KeyMode.CHOSEN and chosen_keys is None
