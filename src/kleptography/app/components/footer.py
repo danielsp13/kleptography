@@ -1,9 +1,12 @@
+"""The site footer: version, author and links."""
+
 from kleptography.app.css.loader import load_css
 from kleptography.app.html.loader import render_template
 from kleptography.app.html.renderer import render_html
 
 
 def render_component_footer() -> None:
+    """Render the site footer."""
     html = render_template(
         "footer.html",
         title="Kleptography",

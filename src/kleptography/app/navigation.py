@@ -1,5 +1,4 @@
-"""
-Page registry for the Streamlit application.
+"""Page registry for the Streamlit application.
 
 Navigation is hidden (no sidebar): pages link to each other explicitly
 through ``st.page_link``. Streamlit identifies a page by its ``url_path``,

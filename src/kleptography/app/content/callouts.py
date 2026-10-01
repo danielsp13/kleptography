@@ -1,3 +1,5 @@
+"""Callout boxes (note, tip, warning, ...) rendered as HTML."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,7 +7,19 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class CalloutComposer:
-    """Compose a callout as HTML suitable for Streamlit."""
+    """Compose a callout as HTML suitable for Streamlit.
+
+    The content is inserted as HTML, so it must use HTML markup instead of
+    Markdown or LaTeX.
+
+    Attributes:
+        type: The kind of callout, one of ``TYPES``.
+        title: The title shown above the content.
+        content: The HTML content of the callout.
+
+    Raises:
+        ValueError: If ``type`` is not one of ``TYPES``.
+    """
 
     type: str
     title: str
@@ -21,6 +35,7 @@ class CalloutComposer:
     }
 
     def __post_init__(self) -> None:
+        """Check that the callout type is known."""
         if self.type not in self.TYPES:
             raise ValueError(
                 f"Unknown callout type: {self.type!r}. "
@@ -28,6 +43,7 @@ class CalloutComposer:
             )
 
     def build(self) -> str:
+        """Return the callout as HTML."""
         return (
             f'<div class="callout callout-{self.type}">'
             f'<div class="callout-title">{self.title}</div>'
@@ -37,32 +53,67 @@ class CalloutComposer:
 
     @classmethod
     def note(cls, content: str, title: str = "Note") -> CalloutComposer:
+        """Return a note callout.
+
+        Args:
+            content: The HTML content of the callout.
+            title: The title shown above the content.
+        """
         return cls("note", title, content)
 
     @classmethod
     def tip(cls, content: str, title: str = "Tip") -> CalloutComposer:
+        """Return a tip callout.
+
+        Args:
+            content: The HTML content of the callout.
+            title: The title shown above the content.
+        """
         return cls("tip", title, content)
 
     @classmethod
     def warning(cls, content: str, title: str = "Warning") -> CalloutComposer:
+        """Return a warning callout.
+
+        Args:
+            content: The HTML content of the callout.
+            title: The title shown above the content.
+        """
         return cls("warning", title, content)
 
     @classmethod
     def danger(cls, content: str, title: str = "Danger") -> CalloutComposer:
+        """Return a danger callout.
+
+        Args:
+            content: The HTML content of the callout.
+            title: The title shown above the content.
+        """
         return cls("danger", title, content)
 
     @classmethod
     def info(cls, content: str, title: str = "Info") -> CalloutComposer:
+        """Return an info callout.
+
+        Args:
+            content: The HTML content of the callout.
+            title: The title shown above the content.
+        """
         return cls("info", title, content)
 
     @classmethod
     def success(cls, content: str, title: str = "Success") -> CalloutComposer:
+        """Return a success callout.
+
+        Args:
+            content: The HTML content of the callout.
+            title: The title shown above the content.
+        """
         return cls("success", title, content)
 
     @staticmethod
     def css() -> str:
-        """Return the CSS required to render callouts in Streamlit."""
-
+        """Return the ``<style>`` block that every page using callouts emits once."""
         return """
         <style>
         .callout {

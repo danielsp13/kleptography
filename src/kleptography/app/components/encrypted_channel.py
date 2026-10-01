@@ -1,5 +1,4 @@
-"""
-Components that render the encrypted channel compromised by the SETUP.
+"""Components that render the encrypted channel compromised by the SETUP.
 
 A run is several sessions of the channel between Alice's device (honest or
 compromised) and an honest Bob. Every value is read from the ``crypto``
@@ -66,8 +65,7 @@ class DeviceKind(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ChannelExperiment:
-    """
-    An executed run of the encrypted channel.
+    """An executed run of the encrypted channel.
 
     Attributes:
         device_kind: Whether Alice's device was honest or compromised.
@@ -101,8 +99,7 @@ def render_component_channel_session(
     parameters: DiffieHellmanParameters,
     display: ValueDisplay,
 ) -> None:
-    """
-    Render one session as the participants see it, in three steps.
+    """Render one session as the participants see it, in three steps.
 
     Args:
         session: The executed session.
@@ -129,8 +126,7 @@ def render_component_channel_session(
 
 
 def render_component_step(number: int, definition: StepDefinition) -> DeltaGenerator:
-    """
-    Render the bordered container of an explanatory step and return it.
+    """Render the bordered container of an explanatory step and return it.
 
     Args:
         number: The step number shown in the title.
@@ -154,6 +150,7 @@ def _value(
     *,
     highlight: bool = False,
 ) -> None:
+    """Render an integer with the run's display settings."""
     render_component_value(
         label,
         value,
@@ -171,6 +168,7 @@ def _render_exchange(
     parameters: DiffieHellmanParameters,
     display: ValueDisplay,
 ) -> None:
+    """Render the ephemeral DH exchange of a session, Alice and Bob side by side."""
     i = number
     sides = (
         (
@@ -240,6 +238,7 @@ def _render_exchange(
 
 
 def _render_key_derivations(session: ChannelSession) -> None:
+    """Render each party's session key derivation and whether they match."""
     i = session.number
     derivations = (
         (Actor.ALICE, session.alice_key_derivation),
@@ -266,6 +265,7 @@ def _render_key_derivations(session: ChannelSession) -> None:
 
 
 def _render_messages(session: ChannelSession) -> None:
+    """Render every message of a session, or a note if there are none."""
     if not session.messages:
         st.caption("No messages were sent in this session.")
         return
@@ -275,6 +275,7 @@ def _render_messages(session: ChannelSession) -> None:
 
 
 def _render_message(message: ChannelMessage) -> None:
+    """Render one message: plaintext, encrypted form and decryption."""
     sender = _ACTOR_NAME[message.sender]
     recipient = _ACTOR_NAME[message.recipient]
 
@@ -313,8 +314,7 @@ def render_component_key_derivation(
     visibility: Visibility,
     highlight: bool = False,
 ) -> None:
-    """
-    Render the encoded secret, the label and the key of a key derivation.
+    """Render the encoded secret, the label and the key of a key derivation.
 
     Args:
         number: The session index used in the labels.
@@ -342,8 +342,7 @@ def render_component_key_derivation(
 
 
 def render_component_encrypted_message(message: TranscriptMessage) -> None:
-    """
-    Render the public fields of an encrypted message: nonce, tag, ciphertext.
+    """Render the public fields of an encrypted message: nonce, tag, ciphertext.
 
     Args:
         message: The message as it travelled over the network.
@@ -369,8 +368,7 @@ def render_component_transcript(
     *,
     display: ValueDisplay,
 ) -> None:
-    """
-    Render what crossed the network, one tab per session.
+    """Render what crossed the network, one tab per session.
 
     Args:
         transcript: The public view of the channel.
@@ -387,6 +385,7 @@ def _render_session_transcript(
     *,
     display: ValueDisplay,
 ) -> None:
+    """Render the public transcript of one session."""
     i = session.number
     alice_column, bob_column = st.columns(2)
     with alice_column, st.container(border=True):
@@ -420,8 +419,7 @@ def render_component_recovery(
     configuration: YoungYungConfiguration,
     display: ValueDisplay,
 ) -> None:
-    """
-    Render the attacker's candidates for ``a_i`` and their check against ``A_i``.
+    """Render the attacker's candidates for ``a_i`` and their check against ``A_i``.
 
     Args:
         candidates: What the attacker computed from ``A_{i-1}`` alone.
@@ -548,6 +546,7 @@ def _render_candidate_check(
     number: int,
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Render whether a candidate exponent reproduces Alice's public key."""
     # Only the matching candidate's power is known (it is A_i), so the
     # rejected one is shown symbolically.
     target = f"A_{{{number}}}"
@@ -578,8 +577,7 @@ def render_component_interception_summary(
     interception: ChannelInterception,
     experiment: ChannelExperiment,
 ) -> None:
-    """
-    Render who reads what in each session, and compare it with the device.
+    """Render who reads what in each session, and compare it with the device.
 
     Args:
         interception: The attacker's reading of the whole transcript.
@@ -611,6 +609,7 @@ def render_component_interception_summary(
 
 
 def _reading(intercepted: InterceptedSession, read: int, total: int) -> str:
+    """Return the summary cell of how many messages the attacker read."""
     if not intercepted.recovered:
         return f"0 of {total}"
     if total == 0:
@@ -622,6 +621,7 @@ def _render_ground_truth(
     interception: ChannelInterception,
     experiment: ChannelExperiment,
 ) -> None:
+    """Render the comparison between the attacker's results and the device."""
     st.markdown(f"Alice's device in this run: **{experiment.device_kind.value}**.")
 
     if experiment.device_kind is DeviceKind.HONEST:

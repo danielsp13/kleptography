@@ -1,8 +1,11 @@
+"""Educational content of the home page."""
+
 from kleptography.app.content.callouts import CalloutComposer
 from kleptography.app.content.composer import ContentComposer
 
 
 def build_home_content() -> str:
+    """Return the introduction and roadmap of the home page as Markdown."""
     content = ContentComposer()
 
     content.h2("Introduction")

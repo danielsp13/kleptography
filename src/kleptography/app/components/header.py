@@ -1,3 +1,5 @@
+"""The site header: logo, title, description and tags."""
+
 from kleptography.app.assets.loader import asset_data_uri
 from kleptography.app.css.loader import load_css
 from kleptography.app.html.loader import render_template
@@ -5,6 +7,7 @@ from kleptography.app.html.renderer import render_html
 
 
 def render_component_header() -> None:
+    """Render the site header."""
     logo = asset_data_uri(
         "logos",
         "kleptofox.png",

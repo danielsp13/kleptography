@@ -1,5 +1,4 @@
-"""
-Interactive section: the Young–Yung SETUP on Diffie-Hellman, step by step.
+"""Interactive section: the Young–Yung SETUP on Diffie-Hellman, step by step.
 
 The section has three tabs: the idea of a SETUP, the complete mathematical
 development, and an experiment. The experiment only orchestrates the
@@ -106,6 +105,7 @@ def render_page_young_yung_setup() -> None:
 
 
 def _render_experiment() -> None:
+    """Render the Experiment tab."""
     st.markdown(
         "Build a backdoored device, run two exchanges between it and an honest "
         "Bob, and then take the attacker's seat: from the public messages "
@@ -134,6 +134,7 @@ def _render_backdoor_section(
     parameters: DiffieHellmanParameters,
     number_format: NumberFormat,
 ) -> Backdoor:
+    """Render section 2 and return the current backdoor."""
     st.header("2 · The attacker builds the backdoor")
     st.markdown(
         "The attacker generates its key pair $(X, Y)$ and the constants "
@@ -164,6 +165,7 @@ def _render_backdoor_section(
 
 
 def _render_private_keys_section() -> ChosenKeys | None:
+    """Render section 3 and return the chosen keys, if any."""
     st.header("3 · Choose the private keys")
     st.markdown(
         "The device picks $a_1$ for the first exchange and derives $a_2$ "
@@ -217,6 +219,7 @@ def _render_run_section(
     backdoor: Backdoor,
     chosen_keys: ChosenKeys | None,
 ) -> None:
+    """Render section 4 and run the experiment when the button is pressed."""
     st.header("4 · Run the experiment")
 
     waiting_for_keys = (
@@ -250,6 +253,7 @@ def _run_experiment(
     backdoor: Backdoor,
     chosen_keys: ChosenKeys | None,
 ) -> SetupRun:
+    """Run both exchanges with the device and the attacker's recovery."""
     device = YoungYungDiffieHellmanParticipant(parameters, backdoor.configuration)
     first_peer = DiffieHellmanParticipant(parameters)
     second_peer = DiffieHellmanParticipant(parameters)
@@ -307,6 +311,7 @@ def _render_timeline_section(
     backdoor: Backdoor,
     number_format: NumberFormat,
 ) -> None:
+    """Render the step-by-step timeline of the last run."""
     run: SetupRun | None = st.session_state.get(_RUN)
 
     if run is None:

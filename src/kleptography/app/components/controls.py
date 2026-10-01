@@ -1,5 +1,4 @@
-"""
-Controls shared by the interactive Diffie-Hellman based sections.
+"""Controls shared by the interactive Diffie-Hellman based sections.
 
 Each section passes its own key prefix (``dh``, ``yy``…), so widgets and
 session state of different sections never collide.
@@ -59,8 +58,7 @@ class KeyMode(StrEnum):
 
 
 def render_component_number_format(*, key_prefix: str) -> NumberFormat:
-    """
-    Render the decimal / hexadecimal selector.
+    """Render the decimal / hexadecimal selector.
 
     Args:
         key_prefix: Section prefix for the widget key.
@@ -85,8 +83,7 @@ def render_component_group_selection(
     key_prefix: str,
     number_format: NumberFormat,
 ) -> DiffieHellmanParameters:
-    """
-    Render the choice of a toy or RFC 7919 group and show its parameters.
+    """Render the choice of a toy or RFC 7919 group and show its parameters.
 
     A generated toy group is kept in ``st.session_state`` under
     ``<key_prefix>_toy_parameters`` until its size changes or the user asks
@@ -135,6 +132,7 @@ def render_component_group_selection(
 
 @cache
 def _standard_group(name: str) -> DiffieHellmanParameters:
+    """Return a standardized group, built once per process."""
     # Building a group re-runs its validation (primality of p and q), which
     # takes about a second for FFDHE8192. The groups are fixed constants, so
     # each one is built once per process instead of on every rerun.
@@ -142,6 +140,7 @@ def _standard_group(name: str) -> DiffieHellmanParameters:
 
 
 def _render_toy_group_controls(key_prefix: str) -> DiffieHellmanParameters:
+    """Render the toy group controls and return the cached toy group."""
     bits = int(
         st.number_input(
             "Size of the prime $p$ (bits)",
@@ -179,8 +178,7 @@ def render_component_step_navigation(
     revealed: int,
     total: int,
 ) -> None:
-    """
-    Render the Next step / Show all steps / Start over buttons of a timeline.
+    """Render the Next step / Show all steps / Start over buttons of a timeline.
 
     Args:
         state_key: Session state key holding the number of revealed steps.
@@ -218,4 +216,5 @@ def render_component_step_navigation(
 
 
 def _reveal(state_key: str, count: int) -> None:
+    """Set how many steps of the timeline are revealed."""
     st.session_state[state_key] = count

@@ -1,6 +1,4 @@
-"""
-Components that render an executed Diffie-Hellman exchange step by step.
-"""
+"""Components that render an executed Diffie-Hellman exchange step by step."""
 
 from __future__ import annotations
 
@@ -55,8 +53,7 @@ _BADGE = {
 
 @dataclass(frozen=True, slots=True)
 class ValueDisplay:
-    """
-    How cryptographic values are displayed.
+    """How cryptographic values are displayed.
 
     Attributes:
         number_format: The base used to display values.
@@ -77,8 +74,7 @@ def render_component_value(
     width_bits: int | None = None,
     highlight: bool = False,
 ) -> None:
-    """
-    Render a labeled cryptographic value in a wrapping code block.
+    """Render a labeled cryptographic value in a wrapping code block.
 
     Args:
         label: Markdown label, typically including a LaTeX symbol.
@@ -106,8 +102,7 @@ def render_component_bytes(
     visibility: Visibility,
     highlight: bool = False,
 ) -> None:
-    """
-    Render a labeled byte string in hexadecimal, in a wrapping code block.
+    """Render a labeled byte string in hexadecimal, in a wrapping code block.
 
     Args:
         label: Markdown label, typically including a LaTeX symbol.
@@ -128,8 +123,7 @@ def render_component_text(
     visibility: Visibility,
     highlight: bool = False,
 ) -> None:
-    """
-    Render a labeled human-readable text, such as a message, in a code block.
+    """Render a labeled human-readable text, such as a message, in a code block.
 
     Args:
         label: Markdown label.
@@ -144,6 +138,7 @@ def render_component_text(
 
 
 def _render_code(label: str, text: str, *, highlight: bool) -> None:
+    """Render a wrapped code block, tinted orange when highlighted."""
     height = _MAX_VALUE_HEIGHT if len(text) > _LONG_VALUE_CHARACTERS else "content"
 
     if not highlight:
@@ -162,8 +157,7 @@ def render_component_protocol_step(
     *,
     display: ValueDisplay,
 ) -> None:
-    """
-    Render one explanatory step of an executed exchange.
+    """Render one explanatory step of an executed exchange.
 
     Args:
         step: The step, with its explanation and recorded events.
@@ -191,11 +185,16 @@ def render_component_parameters(
     subgroup_order: int,
     display: ValueDisplay,
 ) -> None:
-    """
-    Render the public group parameters p, g and q.
+    """Render the public group parameters p, g and q.
 
     Small groups are shown side by side; large ones are stacked. The
     generator is not padded, since it is a small constant such as 2.
+
+    Args:
+        prime: The prime modulus p.
+        generator: The generator g.
+        subgroup_order: The subgroup order q.
+        display: The number format and width used for the values.
     """
     values = (
         ("Prime modulus $p$", prime, display.width_bits),
@@ -224,6 +223,7 @@ def _integer(data: Mapping[str, object], key: str) -> int:
 
 
 def _render_parameters(step: ProtocolStep, display: ValueDisplay) -> None:
+    """Render step 1: the public parameters and their validation."""
     data = step.event(ProtocolEventType.PARAMETERS_SELECTED, Actor.SYSTEM).data
     prime = _integer(data, "prime")
     generator = _integer(data, "generator")
@@ -245,6 +245,7 @@ def _render_parameters(step: ProtocolStep, display: ValueDisplay) -> None:
 
 
 def _render_keypairs(step: ProtocolStep, display: ValueDisplay) -> None:
+    """Render step 2: Alice's and Bob's key pairs side by side."""
     for column, actor in zip(st.columns(2), (Actor.ALICE, Actor.BOB), strict=True):
         with column, st.container(border=True):
             _render_keypair(step, actor, display)
@@ -255,6 +256,7 @@ def _render_keypair(
     actor: Actor,
     display: ValueDisplay,
 ) -> None:
+    """Render one participant's private exponent and public key."""
     name = _ACTOR_NAME[actor]
     private = PRIVATE_SYMBOL[actor]
     public = PUBLIC_SYMBOL[actor]
@@ -307,6 +309,7 @@ def _render_public_key_exchange(
     step: ProtocolStep,
     display: ValueDisplay,
 ) -> None:
+    """Render step 3: the public keys sent over the network."""
     columns = st.columns(2)
 
     for column, sent in zip(
@@ -331,6 +334,7 @@ def _render_public_key_exchange(
 
 
 def _render_shared_secrets(step: ProtocolStep, display: ValueDisplay) -> None:
+    """Render step 4: each participant's shared secret."""
     for column, actor in zip(st.columns(2), (Actor.ALICE, Actor.BOB), strict=True):
         data = step.event(ProtocolEventType.SHARED_SECRET_COMPUTED, actor).data
         shared_secret = _integer(data, "shared_secret")
@@ -356,6 +360,7 @@ def _render_shared_secrets(step: ProtocolStep, display: ValueDisplay) -> None:
 
 
 def _render_verification(step: ProtocolStep, _: ValueDisplay) -> None:
+    """Render step 5: whether both shared secrets match."""
     data = step.event(ProtocolEventType.SHARED_SECRET_VERIFIED, Actor.SYSTEM).data
 
     if data["successful"]:

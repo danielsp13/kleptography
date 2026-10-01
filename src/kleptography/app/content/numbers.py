@@ -1,5 +1,4 @@
-"""
-Presentation helpers for displaying (potentially huge) integers.
+"""Presentation helpers for displaying (potentially huge) integers.
 
 Cryptographic values can have thousands of digits. They are shown in
 fixed-size groups separated by spaces so that they wrap inside their
@@ -34,8 +33,7 @@ def format_integer(
     *,
     width_bits: int | None = None,
 ) -> str:
-    """
-    Format a non-negative integer in groups separated by spaces.
+    """Format a non-negative integer in groups separated by spaces.
 
     Decimal values use groups of three digits aligned to the right, as a
     thousands separator (``12 345 678``). Hexadecimal values use upper-case
@@ -78,8 +76,7 @@ def format_integer(
 
 
 def format_bytes(data: bytes) -> str:
-    """
-    Format a byte string as upper-case hexadecimal in groups of four bytes.
+    """Format a byte string as upper-case hexadecimal in groups of four bytes.
 
     Byte strings (encoded secrets, keys, nonces, ciphertexts, tags) are
     always shown in hexadecimal, whatever the selected number format, with
@@ -98,8 +95,7 @@ def format_bytes(data: bytes) -> str:
 
 
 def is_small(*values: int) -> bool:
-    """
-    Return whether all values are short enough to be shown inside formulas.
+    """Return whether all values are short enough to be shown inside formulas.
 
     Args:
         values: The integers to check.
@@ -111,8 +107,7 @@ def is_small(*values: int) -> bool:
 
 
 def parse_integer(text: str) -> int:
-    """
-    Parse an integer typed by the user.
+    """Parse an integer typed by the user.
 
     Spaces are ignored, so grouped values produced by ``format_integer`` can
     be pasted back. A ``0x`` prefix selects hexadecimal; otherwise the text
@@ -136,8 +131,7 @@ def parse_integer(text: str) -> int:
 
 
 def parse_bytes(text: str) -> bytes:
-    """
-    Parse a byte string typed by the user in hexadecimal.
+    """Parse a byte string typed by the user in hexadecimal.
 
     Spaces are ignored, so values produced by ``format_bytes`` can be pasted
     back, and an optional ``0x`` prefix is accepted.

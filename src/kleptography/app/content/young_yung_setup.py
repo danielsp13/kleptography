@@ -1,5 +1,4 @@
-"""
-Educational content for the Young–Yung SETUP section on Diffie-Hellman.
+"""Educational content for the Young–Yung SETUP section on Diffie-Hellman.
 
 The section tells the same story three times: as an idea (what a SETUP is
 and why this one is a (1,2)-leakage scheme), as mathematics (the complete
@@ -152,8 +151,7 @@ SETUP_STEP_DEFINITIONS: tuple[StepDefinition, ...] = (
 
 @dataclass(frozen=True, slots=True)
 class ExchangeSummary:
-    """
-    The values of one traced exchange between the device and Bob.
+    """The values of one traced exchange between the device and Bob.
 
     The device always plays Alice's role in this section.
 
@@ -178,8 +176,7 @@ class ExchangeSummary:
 
 
 def summarize_exchange(events: tuple[ProtocolEvent, ...]) -> ExchangeSummary:
-    """
-    Extract the values of an exchange from its timeline.
+    """Extract the values of an exchange from its timeline.
 
     Args:
         events: The timeline of an exchange where the device is Alice.
@@ -242,10 +239,18 @@ def power_formula(
     prime: int,
     result: int,
 ) -> str:
-    """
-    Return the LaTeX of ``result = base^exponent mod p``.
+    """Return the LaTeX of ``result = base^exponent mod p``.
 
     Concrete values are substituted only when they are small enough.
+
+    Args:
+        result_symbol: The LaTeX symbol of the result.
+        base_symbol: The LaTeX symbol of the base.
+        exponent_symbol: The LaTeX symbol of the exponent.
+        base: The value of the base.
+        exponent: The value of the exponent.
+        prime: The prime modulus p.
+        result: The value of the result.
     """
     return _substituted(
         rf"{result_symbol} = {base_symbol}^{{{exponent_symbol}}} \bmod p",
@@ -269,7 +274,19 @@ def z_formula(
     prime: int,
     z: int,
 ) -> str:
-    """Return the LaTeX of the device's computation of ``z``."""
+    """Return the LaTeX of the device's computation of ``z``.
+
+    Args:
+        generator: The generator g.
+        previous_private_key: The previous exponent of the device.
+        correction_w: The constant W.
+        correction_bit: The bit t.
+        attacker_public_key: The attacker's public key Y.
+        multiplier_a: The constant alpha (the paper's a).
+        offset_b: The constant beta (the paper's b).
+        prime: The prime modulus p.
+        z: The resulting value z.
+    """
     return _substituted(
         r"z = g^{\,a_1 - W t} \cdot Y^{\,-\alpha a_1 - \beta} \bmod p",
         rf"z = {generator}^{{\,{previous_private_key} - {correction_w} "
@@ -289,7 +306,14 @@ def z_formula(
 def hash_formula(
     result_symbol: str, argument_symbol: str, *, z: int, result: int
 ) -> str:
-    """Return the LaTeX of ``result = H(argument)``."""
+    """Return the LaTeX of ``result = H(argument)``.
+
+    Args:
+        result_symbol: The LaTeX symbol of the result.
+        argument_symbol: The LaTeX symbol of the argument.
+        z: The value of the argument.
+        result: The value of the result.
+    """
     return _substituted(
         rf"{result_symbol} = H({argument_symbol})",
         rf"{result_symbol} = H({argument_symbol}) = H({z}) = {result}",
@@ -308,7 +332,17 @@ def r_formula(
     r: int,
     first_symbol: str = "A_1",
 ) -> str:
-    """Return the LaTeX of the attacker's computation of ``r``."""
+    """Return the LaTeX of the attacker's computation of ``r``.
+
+    Args:
+        first_public_key: The device's previous public key.
+        multiplier_a: The constant alpha (the paper's a).
+        generator: The generator g.
+        offset_b: The constant beta (the paper's b).
+        prime: The prime modulus p.
+        r: The resulting value r.
+        first_symbol: The LaTeX symbol of the previous public key.
+    """
     return _substituted(
         rf"r = {{{first_symbol}}}^{{\alpha}} \cdot g^{{\beta}} \bmod p",
         rf"r = {first_public_key}^{{{multiplier_a}}} \cdot {generator}^{{{offset_b}}}"
@@ -331,7 +365,16 @@ def z1_formula(
     z1: int,
     first_symbol: str = "A_1",
 ) -> str:
-    """Return the LaTeX of the attacker's first candidate ``z1``."""
+    """Return the LaTeX of the attacker's first candidate ``z1``.
+
+    Args:
+        first_public_key: The device's previous public key.
+        r: The value r.
+        attacker_private_key: The attacker's private key X.
+        prime: The prime modulus p.
+        z1: The resulting candidate.
+        first_symbol: The LaTeX symbol of the previous public key.
+    """
     return _substituted(
         rf"z_1 = \frac{{{first_symbol}}}{{r^{{X}}}} \bmod p",
         rf"z_1 = \frac{{{first_public_key}}}{{{r}^{{{attacker_private_key}}}}}"
@@ -352,7 +395,15 @@ def z2_formula(
     prime: int,
     z2: int,
 ) -> str:
-    """Return the LaTeX of the attacker's second candidate ``z2``."""
+    """Return the LaTeX of the attacker's second candidate ``z2``.
+
+    Args:
+        z1: The first candidate.
+        generator: The generator g.
+        correction_w: The constant W.
+        prime: The prime modulus p.
+        z2: The resulting candidate.
+    """
     return _substituted(
         r"z_2 = \frac{z_1}{g^{W}} \bmod p",
         rf"z_2 = \frac{{{z1}}}{{{generator}^{{{correction_w}}}}} \bmod {prime}"

@@ -1,5 +1,4 @@
-"""
-Interactive section: an encrypted channel compromised by the Young–Yung SETUP.
+"""Interactive section: an encrypted channel compromised by the Young–Yung SETUP.
 
 The section has three tabs: the idea (the channel, its ciphersuite and how
 the SETUP breaks it), the participant's point of view (running the channel
@@ -162,6 +161,7 @@ def render_page_encrypted_channel() -> None:
 
 
 def _render_participant() -> None:
+    """Render the Participant tab."""
     st.markdown(build_participant_intro_content(), unsafe_allow_html=True)
 
     number_format = render_component_number_format(key_prefix=_PREFIX)
@@ -184,6 +184,7 @@ def _render_participant() -> None:
 
 
 def _backdoor_for(parameters: DiffieHellmanParameters) -> Backdoor:
+    """Return the backdoor for the group, regenerated only when it changes."""
     # The backdoor exists before any session, whatever device Alice uses. It
     # is regenerated only when the group changes.
     backdoor: Backdoor | None = st.session_state.get(_BACKDOOR)
@@ -195,6 +196,7 @@ def _backdoor_for(parameters: DiffieHellmanParameters) -> Backdoor:
 
 
 def _render_device_section() -> DeviceKind:
+    """Render section 2 and return the device chosen for Alice."""
     st.header("2 · Choose Alice's device")
     st.markdown(
         "Alice's ephemeral keys come from a device she cannot inspect. Pick "
@@ -216,6 +218,7 @@ def _render_device_section() -> DeviceKind:
 
 
 def _render_messages_section() -> list[list[PlainMessage]] | None:
+    """Render section 3 and return the messages, or ``None`` if one is invalid."""
     st.header("3 · Write the messages")
     st.markdown(
         "Every session starts with a new key exchange. In each one, Alice "
@@ -282,12 +285,14 @@ def _render_messages_section() -> list[list[PlainMessage]] | None:
 
 
 def _message_key(number: int, direction: int) -> str:
+    """Return the widget key of one message."""
     return f"ch_message_{number}_{'alice' if direction == 0 else 'bob'}"
 
 
 def _render_message_input(
     column: DeltaGenerator, label: str, number: int, direction: int
 ) -> str:
+    """Render the text field of one message and return its text."""
     # The example texts are set through Session State (not ``value=``), so
     # the restore button can put them back.
     key = _message_key(number, direction)
@@ -303,6 +308,7 @@ def _render_message_input(
 
 
 def _restore_messages() -> None:
+    """Put the example messages back in every field."""
     for number, texts in enumerate(DEFAULT_MESSAGES, start=1):
         for direction, text in enumerate(texts):
             st.session_state[_message_key(number, direction)] = text
@@ -314,6 +320,7 @@ def _render_run_section(
     device_kind: DeviceKind,
     sessions: Sequence[Sequence[PlainMessage]] | None,
 ) -> None:
+    """Render section 4 and run the channel when the button is pressed."""
     st.header("4 · Run the channel")
 
     if parameters.bit_length >= _SLOW_GROUP_BITS:
@@ -351,6 +358,7 @@ def _run_experiment(
     device_kind: DeviceKind,
     sessions: Sequence[Sequence[PlainMessage]],
 ) -> ChannelExperiment:
+    """Run the channel with the chosen device and intercept it once."""
     configuration = backdoor.configuration
     bob = DiffieHellmanParticipant(parameters)
 
@@ -382,6 +390,7 @@ def _render_sessions_section(
     device_kind: DeviceKind,
     number_format: NumberFormat,
 ) -> None:
+    """Render one tab per session of the last run."""
     experiment: ChannelExperiment | None = st.session_state.get(_RUN)
 
     if experiment is None:
@@ -418,6 +427,7 @@ def _render_sessions_section(
 
 
 def _render_attacker() -> None:
+    """Render the Attacker tab."""
     st.markdown(build_attacker_intro_content(), unsafe_allow_html=True)
 
     experiment: ChannelExperiment | None = st.session_state.get(_RUN)
@@ -473,6 +483,7 @@ def _render_workbench(
     transcript: ChannelTranscript,
     display: ValueDisplay,
 ) -> None:
+    """Render the attacker's workbench for the selected session."""
     st.header("3 · Your workbench")
     st.markdown(
         "Pick a session and read it step by step. Each field starts empty: "
@@ -528,6 +539,7 @@ def _render_recovery_step(
     number: int,
     display: ValueDisplay,
 ) -> tuple[int | None, tuple[int, ...]]:
+    """Render workbench step 1: the recovery of Alice's private key."""
     # The candidates of every session were computed once, with the run.
     # Returns the recovered key (if a candidate matched) and the candidates.
     intercepted = experiment.interception.sessions[number - 1]
@@ -563,6 +575,7 @@ def _render_shared_secret_step(
     scope: str,
     display: ValueDisplay,
 ) -> int | None:
+    """Render workbench step 2 and return the shared secret, if computed."""
     i = session.number
     render_component_value(
         f"Bob's public key $B_{{{i}}}$",
@@ -629,6 +642,7 @@ def _shared_secret(
     private_key: int,
     peer_public_key: int,
 ) -> int:
+    """Return the shared secret B_i^a_i mod p, memoized across reruns."""
     # The attacker computes the secret exactly as Alice's device does. With
     # a large group this takes a noticeable time, and the page reruns on
     # every widget change, so the result of each input is kept.
@@ -645,6 +659,7 @@ def _render_key_step(
     scope: str,
     display: ValueDisplay,
 ) -> KeyDerivation | None:
+    """Render workbench step 3 and return the key derivation, if computed."""
     text = _render_workbench_input(
         f"Shared secret $s_{{{number}}}$",
         field=_workbench_key(_SHARED_SECRET, scope),
@@ -693,6 +708,7 @@ def _render_decrypt_step(
     *,
     scope: str,
 ) -> None:
+    """Render workbench step 4: the decryption of a message."""
     if not session.messages:
         st.caption("No messages were sent in this session: there is nothing to read.")
         return
@@ -763,6 +779,7 @@ def _render_decrypt_step(
 
 
 def _message_label(session: SessionTranscript, index: int) -> str:
+    """Return the label of a message in the message selector."""
     message = session.messages[index]
     sender = "Alice" if message.sender is Actor.ALICE else "Bob"
     recipient = "Bob" if message.sender is Actor.ALICE else "Alice"
@@ -785,6 +802,7 @@ def _private_key_pastes(
     candidate_keys: tuple[int, ...],
     display: ValueDisplay,
 ) -> tuple[_Paste, ...]:
+    """Return the paste buttons for the private key field."""
     if recovered is not None:
         return (
             _Paste(
@@ -815,6 +833,7 @@ def _render_workbench_input(
     pastes: Sequence[_Paste],
     pending: str,
 ) -> str:
+    """Render a workbench field with its paste buttons and return its text."""
     # A text field with one button per value it can paste from a previous
     # step, and a hint below saying what each button reuses.
     columns = st.columns([3] + [1] * max(len(pastes), 1), vertical_alignment="bottom")
@@ -862,14 +881,17 @@ def _render_workbench_input(
 
 
 def _preview(value: str) -> str:
+    """Return a value shortened to 32 characters for a hint."""
     return value if len(value) <= 32 else f"{value[:32]}…"
 
 
 def _fill(field: str, value: str) -> None:
+    """Write a value into a workbench field (a button callback)."""
     st.session_state[field] = value
 
 
 def _workbench_key(prefix: str, scope: str) -> str:
+    """Return the widget key of a field for one run and session."""
     # A widget that is not rendered loses its value, so a new key per run and
     # session gives empty fields (and no stale result) whenever either one
     # changes, without relying on callbacks to clear them.
@@ -877,6 +899,7 @@ def _workbench_key(prefix: str, scope: str) -> str:
 
 
 def _integer_input(value: int, display: ValueDisplay) -> str:
+    """Return an integer formatted as the user would type it."""
     # Typed values follow the selected format, as parse_integer reads them.
     if display.number_format is NumberFormat.HEXADECIMAL:
         return f"0x{value:X}"

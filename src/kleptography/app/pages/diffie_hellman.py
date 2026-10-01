@@ -1,5 +1,4 @@
-"""
-Interactive section: an honest Diffie-Hellman key exchange, step by step.
+"""Interactive section: an honest Diffie-Hellman key exchange, step by step.
 
 The page only orchestrates: it builds parameters and participants through
 the ``crypto`` API, runs ``perform_key_exchange`` with a
@@ -78,6 +77,7 @@ def render_page_diffie_hellman() -> None:
 
 
 def _render_parameters_section(number_format: NumberFormat) -> DiffieHellmanParameters:
+    """Render section 1 and return the selected group."""
     st.header("1 · Choose the public parameters")
     return render_component_group_selection(
         key_prefix=_PREFIX, number_format=number_format
@@ -87,6 +87,7 @@ def _render_parameters_section(number_format: NumberFormat) -> DiffieHellmanPara
 def _render_private_keys_section(
     parameters: DiffieHellmanParameters,
 ) -> tuple[int, int] | None:
+    """Render section 2 and return the chosen keys, if any."""
     st.header("2 · Choose the private keys")
     st.markdown(
         "Each participant needs a secret number between $1$ and $q - 1$. "
@@ -133,6 +134,7 @@ def _render_run_section(
     parameters: DiffieHellmanParameters,
     private_keys: tuple[int, int] | None,
 ) -> None:
+    """Render section 3 and run the exchange when the button is pressed."""
     st.header("3 · Run the exchange")
 
     waiting_for_keys = (
@@ -175,6 +177,7 @@ def _render_timeline_section(
     parameters: DiffieHellmanParameters,
     number_format: NumberFormat,
 ) -> None:
+    """Render the step-by-step timeline of the last run."""
     run: ExchangeRun | None = st.session_state.get(_RUN)
 
     if run is None:

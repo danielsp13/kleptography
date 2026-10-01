@@ -1,5 +1,4 @@
-"""
-Educational content for the encrypted channel compromised by the SETUP.
+"""Educational content for the encrypted channel compromised by the SETUP.
 
 The section extends the Young–Yung case study from a key exchange to a
 complete secure channel: ephemeral Diffie-Hellman, a key derivation function
@@ -46,8 +45,7 @@ DEFAULT_MESSAGES: tuple[tuple[str, str], ...] = (
 
 
 def session_step_definitions(number: int) -> tuple[StepDefinition, ...]:
-    """
-    Return the three explanatory steps of session ``number``.
+    """Return the three explanatory steps of session ``number``.
 
     Args:
         number: The session number, starting at 1.
@@ -412,8 +410,7 @@ def build_indistinguishable_content() -> str:
 
 
 def workbench_step_definitions(number: int) -> tuple[StepDefinition, ...]:
-    """
-    Return the four steps of the attacker's workbench for session ``number``.
+    """Return the four steps of the attacker's workbench for session ``number``.
 
     Args:
         number: The session the attacker works on, starting at 1.

@@ -1,5 +1,4 @@
-"""
-Components that render a Young–Yung SETUP experiment step by step.
+"""Components that render a Young–Yung SETUP experiment step by step.
 
 A run is two traced Diffie-Hellman exchanges between a compromised device
 (in Alice's role) and an honest Bob, the SETUP derivation that happened
@@ -43,8 +42,7 @@ SETUP_STEP_COUNT = len(SETUP_STEP_DEFINITIONS)
 
 @dataclass(frozen=True, slots=True)
 class SetupRun:
-    """
-    An executed SETUP experiment.
+    """An executed SETUP experiment.
 
     Attributes:
         parameters: The group of both exchanges.
@@ -74,8 +72,7 @@ def render_component_backdoor(
     configuration: YoungYungConfiguration,
     display: ValueDisplay,
 ) -> None:
-    """
-    Render the attacker's key pair and the constants hidden in the device.
+    """Render the attacker's key pair and the constants hidden in the device.
 
     Args:
         attacker: The attacker, holding ``X``.
@@ -130,8 +127,7 @@ def render_component_setup_step(
     *,
     display: ValueDisplay,
 ) -> None:
-    """
-    Render one explanatory step of an executed SETUP experiment.
+    """Render one explanatory step of an executed SETUP experiment.
 
     Args:
         number: The step number, from 1 to ``SETUP_STEP_COUNT``.
@@ -163,6 +159,7 @@ def _value(
     visibility: Visibility,
     display: ValueDisplay,
 ) -> None:
+    """Render an integer with the run's display settings."""
     render_component_value(
         label,
         value,
@@ -173,6 +170,7 @@ def _value(
 
 
 def _render_parameters(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 1: the public parameters of the group."""
     render_component_parameters(
         prime=run.parameters.prime,
         generator=run.parameters.generator,
@@ -182,6 +180,7 @@ def _render_parameters(run: SetupRun, display: ValueDisplay) -> None:
 
 
 def _render_backdoor(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 2: the attacker's keys and the embedded configuration."""
     render_component_backdoor(
         attacker=run.attacker,
         configuration=run.configuration,
@@ -198,6 +197,7 @@ def _render_exchange(
     device_key_origin: str,
     display: ValueDisplay,
 ) -> None:
+    """Render one exchange, the device and Bob side by side."""
     prime = run.parameters.prime
     generator = run.parameters.generator
     device_column, bob_column = st.columns(2)
@@ -302,6 +302,7 @@ def _render_exchange(
 
 
 def _render_first_exchange(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 3: the first exchange, with an honest a1."""
     exchange = run.first_exchange
     _render_exchange(
         run,
@@ -319,6 +320,7 @@ def _render_first_exchange(run: SetupRun, display: ValueDisplay) -> None:
 
 
 def _render_derivation(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 4: the SETUP derivation of a2 inside the device."""
     derivation = run.derivation
     configuration = run.configuration
     parameters = run.parameters
@@ -360,6 +362,7 @@ def _render_derivation(run: SetupRun, display: ValueDisplay) -> None:
 
 
 def _render_second_exchange(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 5: the second exchange, with the derived a2."""
     _render_exchange(
         run,
         run.second_exchange,
@@ -370,6 +373,7 @@ def _render_second_exchange(run: SetupRun, display: ValueDisplay) -> None:
 
 
 def _render_transcript(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 6: the public transcript of both exchanges."""
     messages = (
         ("Alice → Bob, exchange 1: $A_1$", run.first_exchange.device_public_key),
         ("Bob → Alice, exchange 1: $B_1$", run.first_exchange.peer_public_key),
@@ -391,6 +395,7 @@ def _render_transcript(run: SetupRun, display: ValueDisplay) -> None:
 
 
 def _render_recovery(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 7: the attacker's recovery of a2 from A1 and A2."""
     recovery = run.recovery
     configuration = run.configuration
     parameters = run.parameters
@@ -469,6 +474,7 @@ def _render_recovery(run: SetupRun, display: ValueDisplay) -> None:
 
 
 def _render_candidate_check(run: SetupRun, candidate: int, *, index: int) -> None:
+    """Render whether a candidate exponent reproduces A2."""
     # Only the matching candidate's power is known (it is A2), so the
     # rejected one is shown symbolically.
     if candidate != run.recovery.private_key:
@@ -490,6 +496,7 @@ def _render_candidate_check(run: SetupRun, candidate: int, *, index: int) -> Non
 
 
 def _render_recovered_secret(run: SetupRun, display: ValueDisplay) -> None:
+    """Render step 8: the shared secret recovered by the attacker."""
     second = run.second_exchange
     recovered = run.recovered_shared_secret
 

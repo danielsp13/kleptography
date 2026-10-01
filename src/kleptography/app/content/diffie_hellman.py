@@ -1,5 +1,4 @@
-"""
-Educational content for the interactive honest Diffie-Hellman section.
+"""Educational content for the interactive honest Diffie-Hellman section.
 
 This module turns the presentation-agnostic protocol timeline emitted by
 ``perform_key_exchange`` into explanatory steps (text and LaTeX). It only
@@ -119,8 +118,11 @@ class ProtocolStep:
     events: tuple[ProtocolEvent, ...]
 
     def event(self, event_type: ProtocolEventType, actor: Actor) -> ProtocolEvent:
-        """
-        Return the first event of this step with the given type and actor.
+        """Return the first event of this step with the given type and actor.
+
+        Args:
+            event_type: The type of the event.
+            actor: The entity responsible for the event.
 
         Raises:
             LookupError: If the step has no such event.
@@ -132,15 +134,18 @@ class ProtocolStep:
         raise LookupError(f"No {event_type} event for {actor} in step {self.number}.")
 
     def events_of(self, *event_types: ProtocolEventType) -> tuple[ProtocolEvent, ...]:
-        """Return the events of this step whose type is one of ``event_types``."""
+        """Return the events of this step whose type is one of ``event_types``.
+
+        Args:
+            *event_types: The event types to keep.
+        """
         return tuple(event for event in self.events if event.event_type in event_types)
 
 
 def build_protocol_steps(
     events: tuple[ProtocolEvent, ...],
 ) -> tuple[ProtocolStep, ...]:
-    """
-    Group a protocol timeline into the five explanatory steps.
+    """Group a protocol timeline into the five explanatory steps.
 
     Event types that do not belong to any step (such as the reserved
     modular exponentiation events) are ignored. Steps without events are
@@ -177,11 +182,17 @@ def public_key_formula(
     prime: int,
     public_key: int,
 ) -> str:
-    """
-    Return the LaTeX derivation of a participant's public key.
+    """Return the LaTeX derivation of a participant's public key.
 
     Concrete values are substituted only when they are small enough to be
     readable; otherwise the symbolic formula is returned.
+
+    Args:
+        actor: The participant, Alice or Bob, who sets the symbols.
+        generator: The generator g.
+        private_key: The participant's private exponent.
+        prime: The prime modulus p.
+        public_key: The resulting public key.
     """
     private = PRIVATE_SYMBOL[actor]
     public = PUBLIC_SYMBOL[actor]
@@ -200,11 +211,17 @@ def shared_secret_formula(
     prime: int,
     shared_secret: int,
 ) -> str:
-    """
-    Return the LaTeX derivation of a participant's shared secret.
+    """Return the LaTeX derivation of a participant's shared secret.
 
     Concrete values are substituted only when they are small enough to be
     readable; otherwise the symbolic formula is returned.
+
+    Args:
+        actor: The participant, Alice or Bob, who sets the symbols.
+        peer_public_key: The public key received from the peer.
+        private_key: The participant's private exponent.
+        prime: The prime modulus p.
+        shared_secret: The resulting shared secret.
     """
     secret = SECRET_SYMBOL[actor]
     peer_public = PUBLIC_SYMBOL[PEER[actor]]

@@ -1,6 +1,4 @@
-"""
-Navigation components: links between the home page and the sections.
-"""
+"""Navigation components: links between the home page and the sections."""
 
 from __future__ import annotations
 
@@ -17,8 +15,7 @@ from kleptography.app.navigation import home_page
 
 @dataclass(frozen=True, slots=True)
 class SectionCard:
-    """
-    A section of the application, as presented on the home page.
+    """A section of the application, as presented on the home page.
 
     Attributes:
         title: The section name.
@@ -40,8 +37,7 @@ def render_component_back_home() -> None:
 
 
 def render_component_section_cards(cards: Sequence[SectionCard]) -> None:
-    """
-    Render the section cards as a grid of equally sized, fully clickable cards.
+    """Render the section cards as a grid of equally sized, fully clickable cards.
 
     Each available card is a plain link to its page's URL (relative, so it
     also works under a base URL path). Unavailable cards are rendered

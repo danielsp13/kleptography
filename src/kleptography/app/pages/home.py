@@ -1,3 +1,5 @@
+"""The home page: header, section cards, introduction and footer."""
+
 import streamlit as st
 
 from kleptography.app.components.footer import render_component_footer
@@ -16,6 +18,7 @@ from kleptography.app.navigation import (
 
 
 def render_page_home() -> None:
+    """Render the home page."""
     render_component_header()
 
     st.markdown(
@@ -34,6 +37,7 @@ def render_page_home() -> None:
 
 
 def _render_sections() -> None:
+    """Render the cards that link to the interactive sections."""
     st.markdown("## Interactive sections")
 
     render_component_section_cards(
