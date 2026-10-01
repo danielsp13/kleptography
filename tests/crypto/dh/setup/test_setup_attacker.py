@@ -27,7 +27,7 @@ from kleptography.crypto.dh.setup.hashing import hash_to_exponent
 from kleptography.crypto.dh.setup.participant import (
     YoungYungDiffieHellmanParticipant,
 )
-from kleptography.crypto.dh.setup.records import SetupRecovery
+from kleptography.crypto.dh.setup.records import SetupCandidates, SetupRecovery
 from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
 from kleptography.crypto.dh.tracing.events import Actor, ProtocolEventType
 
@@ -708,3 +708,91 @@ def test_generated_configuration_works_end_to_end(repetition: int) -> None:
         )
         == second.bob_shared_secret
     )
+
+
+def test_compute_candidates_matches_test_vector(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+) -> None:
+    """From m1 = 18 alone: r = 8, z = (3, 9), keys (4, 10)."""
+    candidates = attacker.compute_candidates(
+        first_public_key=18, configuration=configuration
+    )
+
+    assert candidates == SetupCandidates(
+        first_public_key=18,
+        r=8,
+        z_candidates=(3, 9),
+        private_key_candidates=(4, 10),
+    )
+
+
+def test_compute_candidates_rejects_invalid_inputs(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+    parameters: DiffieHellmanParameters,
+) -> None:
+    with pytest.raises(InvalidPublicKey):
+        attacker.compute_candidates(first_public_key=5, configuration=configuration)
+    with pytest.raises(InvalidSetupConfiguration):
+        attacker.compute_candidates(
+            first_public_key=18,
+            configuration=build_configuration(parameters, attacker_public_key=4),
+        )
+
+
+@pytest.mark.parametrize(
+    ("second_public_key", "expected_bit", "expected_key"),
+    [(16, 0, 4), (12, 1, 10)],
+)
+def test_match_candidates_keeps_the_matching_key(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+    second_public_key: int,
+    expected_bit: int,
+    expected_key: int,
+) -> None:
+    candidates = attacker.compute_candidates(
+        first_public_key=18, configuration=configuration
+    )
+
+    recovery = attacker.match_candidates(
+        candidates, second_public_key=second_public_key
+    )
+
+    assert recovery == attacker.recover(
+        first_public_key=18,
+        second_public_key=second_public_key,
+        configuration=configuration,
+    )
+    assert (recovery.correction_bit, recovery.private_key) == (
+        expected_bit,
+        expected_key,
+    )
+
+
+def test_match_candidates_rejects_unrelated_or_invalid_keys(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+) -> None:
+    """2 = g^1 is a valid key, but 1 is neither candidate; 5 is not valid."""
+    candidates = attacker.compute_candidates(
+        first_public_key=18, configuration=configuration
+    )
+
+    with pytest.raises(SetupRecoveryError):
+        attacker.match_candidates(candidates, second_public_key=2)
+    with pytest.raises(InvalidPublicKey):
+        attacker.match_candidates(candidates, second_public_key=5)
+
+
+def test_candidates_are_frozen(
+    attacker: YoungYungAttacker,
+    configuration: YoungYungConfiguration,
+) -> None:
+    candidates = attacker.compute_candidates(
+        first_public_key=18, configuration=configuration
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        candidates.r = 1  # ty: ignore[invalid-assignment]

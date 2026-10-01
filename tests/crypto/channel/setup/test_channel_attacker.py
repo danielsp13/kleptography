@@ -188,6 +188,12 @@ def test_attacker_reads_nothing_from_an_honest_alice(
         InterceptionOutcome.RECOVERY_FAILED,
         InterceptionOutcome.RECOVERY_FAILED,
     ]
+    # The candidates are still computed: they just do not reproduce A_i.
+    second = interception.sessions[1]
+    assert second.candidates is not None
+    assert second.candidates.private_key_candidates == (4, 10)
+    assert interception.sessions[0].candidates is None
+    assert interception.sessions[2].candidates is not None
     for session in interception.sessions:
         assert session.recovery is None
         assert session.shared_secret is None

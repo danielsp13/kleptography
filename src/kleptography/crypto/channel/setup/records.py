@@ -7,7 +7,7 @@ from kleptography.crypto.aead.records import EncryptedMessage
 from kleptography.crypto.channel.records import SessionTranscript, TranscriptMessage
 from kleptography.crypto.channel.setup.exceptions import InvalidChannelInterception
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
-from kleptography.crypto.dh.setup.records import SetupRecovery
+from kleptography.crypto.dh.setup.records import SetupCandidates, SetupRecovery
 from kleptography.crypto.dh.tracing.events import Actor
 from kleptography.crypto.kdf.records import KeyDerivation
 
@@ -44,6 +44,8 @@ class InterceptedMessage:
 class InterceptedSession:
     transcript: SessionTranscript
     outcome: InterceptionOutcome
+    # Every session but the first has candidates, even when none matches.
+    candidates: SetupCandidates | None
     recovery: SetupRecovery | None
     shared_secret: int | None
     key_derivation: KeyDerivation | None
@@ -55,6 +57,10 @@ class InterceptedSession:
         if (self.number == 1) != (self.outcome is InterceptionOutcome.NOT_RECOVERABLE):
             raise InvalidChannelInterception(
                 "Only session 1, and every session 1, is not recoverable."
+            )
+        if (self.number == 1) != (self.candidates is None):
+            raise InvalidChannelInterception(
+                "Every session but the first has SETUP candidates."
             )
         if tuple(message.transcript for message in self.messages) != (
             self.transcript.messages
@@ -88,6 +94,21 @@ class InterceptedSession:
         ):
             raise InvalidChannelInterception(
                 "A recovered session needs its recovery, shared secret and key."
+            )
+        candidates = self.candidates
+        if candidates is None or (
+            self.recovery.first_public_key,
+            self.recovery.r,
+            self.recovery.z_candidates,
+            self.recovery.private_key_candidates,
+        ) != (
+            candidates.first_public_key,
+            candidates.r,
+            candidates.z_candidates,
+            candidates.private_key_candidates,
+        ):
+            raise InvalidChannelInterception(
+                "The recovery must come from the session's candidates."
             )
         if self.recovery.second_public_key != self.transcript.alice_public_key:
             raise InvalidChannelInterception(

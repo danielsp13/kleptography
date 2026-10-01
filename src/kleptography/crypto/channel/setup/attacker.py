@@ -20,6 +20,7 @@ from kleptography.crypto.dh.setup.exceptions import (
     InvalidSetupConfiguration,
     SetupRecoveryError,
 )
+from kleptography.crypto.dh.setup.records import SetupCandidates
 from kleptography.crypto.dh.validation import validate_public_key
 from kleptography.crypto.kdf.one_step import derive_key
 from kleptography.math.modular import mod_pow
@@ -76,14 +77,18 @@ def _intercept_session(
         subgroup_order=parameters.subgroup_order,
     )
 
+    # The candidates come from A_{i-1} alone; only the check uses A_i.
+    candidates = attacker.compute_candidates(
+        first_public_key=previous.alice_public_key, configuration=configuration
+    )
     try:
-        recovery = attacker.recover(
-            first_public_key=previous.alice_public_key,
-            second_public_key=current.alice_public_key,
-            configuration=configuration,
+        recovery = attacker.match_candidates(
+            candidates, second_public_key=current.alice_public_key
         )
     except SetupRecoveryError:
-        return _not_recovered(current, InterceptionOutcome.RECOVERY_FAILED)
+        return _not_recovered(
+            current, InterceptionOutcome.RECOVERY_FAILED, candidates=candidates
+        )
 
     # From here on the attacker is just Alice: same secret, same KDF, same AEAD.
     shared_secret = mod_pow(
@@ -94,6 +99,7 @@ def _intercept_session(
     return InterceptedSession(
         transcript=current,
         outcome=InterceptionOutcome.RECOVERED,
+        candidates=candidates,
         recovery=recovery,
         shared_secret=shared_secret,
         key_derivation=key_derivation,
@@ -115,11 +121,15 @@ def _decrypt_message(message: TranscriptMessage, key: bytes) -> InterceptedMessa
 
 
 def _not_recovered(
-    session: SessionTranscript, outcome: InterceptionOutcome
+    session: SessionTranscript,
+    outcome: InterceptionOutcome,
+    *,
+    candidates: SetupCandidates | None = None,
 ) -> InterceptedSession:
     return InterceptedSession(
         transcript=session,
         outcome=outcome,
+        candidates=candidates,
         recovery=None,
         shared_secret=None,
         key_derivation=None,

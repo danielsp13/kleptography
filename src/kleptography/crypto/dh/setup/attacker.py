@@ -11,7 +11,7 @@ from kleptography.crypto.dh.setup.exceptions import (
     SetupRecoveryError,
 )
 from kleptography.crypto.dh.setup.hashing import SetupHashFunction, hash_to_exponent
-from kleptography.crypto.dh.setup.records import SetupRecovery
+from kleptography.crypto.dh.setup.records import SetupCandidates, SetupRecovery
 from kleptography.crypto.dh.validation import validate_private_key, validate_public_key
 from kleptography.math.modular import mod_pow
 
@@ -60,29 +60,17 @@ class YoungYungAttacker:
             hash_function=hash_function,
         )
 
-    def recover(
+    def compute_candidates(
         self,
         *,
         first_public_key: int,
-        second_public_key: int,
         configuration: YoungYungConfiguration,
-    ) -> SetupRecovery:
-        prime = self.parameters.prime
-        subgroup_order = self.parameters.subgroup_order
-
-        if (
-            configuration.parameters != self.parameters
-            or configuration.attacker_public_key != self.public_key
-        ):
-            raise InvalidSetupConfiguration(
-                "The configuration does not embed this attacker's public key."
-            )
-
+    ) -> SetupCandidates:
+        self._validate_configuration(configuration)
         validate_public_key(
-            first_public_key, prime=prime, subgroup_order=subgroup_order
-        )
-        validate_public_key(
-            second_public_key, prime=prime, subgroup_order=subgroup_order
+            first_public_key,
+            prime=self.parameters.prime,
+            subgroup_order=self.parameters.subgroup_order,
         )
 
         z_candidates = recover_z_candidates(
@@ -90,21 +78,43 @@ class YoungYungAttacker:
             attacker_private_key=self.private_key,
             configuration=configuration,
         )
-        private_key_candidates = (
-            configuration.hash_function(z_candidates[0], parameters=self.parameters),
-            configuration.hash_function(z_candidates[1], parameters=self.parameters),
+        return SetupCandidates(
+            first_public_key=first_public_key,
+            r=compute_r(first_public_key, configuration=configuration),
+            z_candidates=z_candidates,
+            private_key_candidates=(
+                configuration.hash_function(
+                    z_candidates[0], parameters=self.parameters
+                ),
+                configuration.hash_function(
+                    z_candidates[1], parameters=self.parameters
+                ),
+            ),
+        )
+
+    def match_candidates(
+        self,
+        candidates: SetupCandidates,
+        *,
+        second_public_key: int,
+    ) -> SetupRecovery:
+        prime = self.parameters.prime
+        validate_public_key(
+            second_public_key,
+            prime=prime,
+            subgroup_order=self.parameters.subgroup_order,
         )
 
         # t is unknown: try z1 (t = 0), then z2 (t = 1), and keep the one
         # whose exponent reproduces the observed m2.
-        for correction_bit, c2 in enumerate(private_key_candidates):
+        for correction_bit, c2 in enumerate(candidates.private_key_candidates):
             if mod_pow(self.parameters.generator, c2, prime) == second_public_key:
                 return SetupRecovery(
-                    first_public_key=first_public_key,
+                    first_public_key=candidates.first_public_key,
                     second_public_key=second_public_key,
-                    r=compute_r(first_public_key, configuration=configuration),
-                    z_candidates=z_candidates,
-                    private_key_candidates=private_key_candidates,
+                    r=candidates.r,
+                    z_candidates=candidates.z_candidates,
+                    private_key_candidates=candidates.private_key_candidates,
                     correction_bit=correction_bit,
                     private_key=c2,
                 )
@@ -112,6 +122,27 @@ class YoungYungAttacker:
         raise SetupRecoveryError(
             "Neither candidate reproduces m2: it was not derived from m1 by this SETUP."
         )
+
+    def recover(
+        self,
+        *,
+        first_public_key: int,
+        second_public_key: int,
+        configuration: YoungYungConfiguration,
+    ) -> SetupRecovery:
+        candidates = self.compute_candidates(
+            first_public_key=first_public_key, configuration=configuration
+        )
+        return self.match_candidates(candidates, second_public_key=second_public_key)
+
+    def _validate_configuration(self, configuration: YoungYungConfiguration) -> None:
+        if (
+            configuration.parameters != self.parameters
+            or configuration.attacker_public_key != self.public_key
+        ):
+            raise InvalidSetupConfiguration(
+                "The configuration does not embed this attacker's public key."
+            )
 
     def recover_private_key(
         self,

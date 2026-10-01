@@ -20,7 +20,7 @@ from kleptography.crypto.channel.setup.records import (
     InterceptionOutcome,
 )
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
-from kleptography.crypto.dh.setup.records import SetupRecovery
+from kleptography.crypto.dh.setup.records import SetupCandidates, SetupRecovery
 from kleptography.crypto.dh.tracing.events import Actor
 from kleptography.crypto.kdf.one_step import derive_key
 from kleptography.crypto.kdf.records import KeyDerivation
@@ -34,6 +34,9 @@ RECOVERY = SetupRecovery(
     private_key_candidates=(4, 10),
     correction_bit=0,
     private_key=4,
+)
+CANDIDATES = SetupCandidates(
+    first_public_key=18, r=8, z_candidates=(3, 9), private_key_candidates=(4, 10)
 )
 TRANSCRIPT_MESSAGE = TranscriptMessage(
     sender=Actor.BOB,
@@ -59,6 +62,7 @@ def recovered_session(number: int = 2) -> InterceptedSession:
     return InterceptedSession(
         transcript=session_transcript(number),
         outcome=InterceptionOutcome.RECOVERED,
+        candidates=CANDIDATES,
         recovery=RECOVERY,
         shared_secret=18,
         key_derivation=KEY_DERIVATION,
@@ -72,6 +76,7 @@ def hidden_session(number: int, outcome: InterceptionOutcome) -> InterceptedSess
     return InterceptedSession(
         transcript=session_transcript(number),
         outcome=outcome,
+        candidates=None if number == 1 else CANDIDATES,
         recovery=None,
         shared_secret=None,
         key_derivation=None,
@@ -250,3 +255,36 @@ def test_channel_interception_sessions_are_numbered_in_order(
 
     with pytest.raises(InvalidChannelInterception):
         ChannelInterception(parameters=parameters, sessions=sessions)
+
+
+@pytest.mark.parametrize(
+    "session",
+    [
+        lambda: replace(
+            hidden_session(1, InterceptionOutcome.NOT_RECOVERABLE),
+            candidates=CANDIDATES,
+        ),
+        lambda: replace(
+            hidden_session(2, InterceptionOutcome.RECOVERY_FAILED), candidates=None
+        ),
+        lambda: replace(recovered_session(), candidates=None),
+    ],
+    ids=["first-with-candidates", "failed-without", "recovered-without"],
+)
+def test_only_later_sessions_have_candidates(
+    session: Callable[[], InterceptedSession],
+) -> None:
+    with pytest.raises(InvalidChannelInterception):
+        session()
+
+
+def test_failed_session_keeps_its_candidates() -> None:
+    session = hidden_session(2, InterceptionOutcome.RECOVERY_FAILED)
+
+    assert session.candidates == CANDIDATES
+    assert session.recovery is None
+
+
+def test_recovery_must_come_from_the_candidates() -> None:
+    with pytest.raises(InvalidChannelInterception):
+        replace(recovered_session(), candidates=replace(CANDIDATES, r=9))
