@@ -84,7 +84,7 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Interactive honest DH section (`/diffie-hellman`) | Done. Toy or RFC 7919 group, random or chosen keys, step-by-step timeline. |
 | Young–Yung SETUP section (`/young-yung-setup`) | Done. Tabs: idea (SETUP, (1,2)-leakage), formulae (full derivation), experiment (two exchanges + attacker recovery, 8 steps). |
 | Young–Yung DH SETUP (kleptographic DH) | Done, fully tested. Its former open points are closed by the maintainer's decision (see 4.6). |
-| Encrypted channel compromised by the SETUP (DH + KDF + AES-256-GCM) | Crypto done, fully tested (see 4.7): AEAD, KDF, channel and channel attacker. UI pending: intended as a fourth tab of the SETUP section. |
+| Encrypted channel compromised by the SETUP (DH + KDF + AES-256-GCM) | Done (see 4.7): AEAD, KDF, channel and channel attacker fully tested; interactive section `/encrypted-channel` with idea, participant and attacker tabs. |
 | RSA / post-quantum targets | Future. |
 
 Roadmap, as stated on the home page (`app/content/home.py`):
@@ -94,7 +94,8 @@ Roadmap, as stated on the home page (`app/content/home.py`):
 3. Study and implement the Young–Yung construction. **(done)**
 4. Interactive experiments around it, mirroring the honest DH section.
    **(done)**
-5. Expose intermediate values and attacker knowledge. **(done for DH)**
+5. Expose intermediate values and attacker knowledge. **(done for DH and
+   the encrypted channel)**
 6. Document security assumptions and limitations.
 7. Apply the same methodology to other constructions.
 
@@ -103,14 +104,14 @@ Every case study follows the same page progression: mathematical background
 (both constructions under comparable conditions) → observation (what each
 participant can see) → analysis.
 
-Test suite: 826 tests, all passing (289 of them in `tests/crypto/dh/setup/`,
+Test suite: 837 tests, all passing (295 of them in `tests/crypto/dh/setup/`,
 50 in `tests/crypto/aead/`, 43 in `tests/crypto/kdf/`, 71 in
-`tests/crypto/channel/` and 54 in `tests/crypto/channel/setup/`).
+`tests/crypto/channel/` and 59 in `tests/crypto/channel/setup/`).
 `crypto/` and `math/` are at 100% coverage. On
 the maintainer's request, the new UI modules (`navigation.py`,
-`components/{navigation,protocol,controls,young_yung_setup}.py`,
-`content/{diffie_hellman,young_yung_setup,numbers}.py`, `pages/*`) **have no
-tests yet. Do not add page or component tests unless a task asks for them.**
+`components/{navigation,protocol,controls,young_yung_setup,encrypted_channel}.py`,
+`content/{diffie_hellman,young_yung_setup,encrypted_channel,numbers}.py`,
+`pages/*`) **have no tests yet. Do not add page or component tests unless a task asks for them.**
 
 ## 4. Architecture and interrelations
 
@@ -137,12 +138,15 @@ src/kleptography/
 └── app/                     # Streamlit presentation layer
     ├── main.py              # entry point: page config + hidden st.navigation
     ├── navigation.py        # page registry: home_page(), diffie_hellman_page(),
-    │                        # young_yung_setup_page(), all_pages()
-    ├── pages/               # home.py, diffie_hellman.py, young_yung_setup.py
+    │                        # young_yung_setup_page(), encrypted_channel_page(),
+    │                        # all_pages()
+    ├── pages/               # home.py, diffie_hellman.py, young_yung_setup.py,
+    │                        # encrypted_channel.py
     ├── components/          # header, footer, navigation (back link, section card),
-    │                        # controls (shared DH widgets), protocol, young_yung_setup
+    │                        # controls (shared DH widgets), protocol, young_yung_setup,
+    │                        # encrypted_channel
     ├── content/             # composer, callouts, home, diffie_hellman,
-    │                        # young_yung_setup, numbers
+    │                        # young_yung_setup, encrypted_channel, numbers
     ├── html/                # templates/*.html, loader.py, renderer.py
     ├── css/                 # styles/{header,footer,protocol}.css, loader.py
     └── assets/              # logos/kleptofox.png, loader.py
@@ -299,8 +303,9 @@ imports `kleptography.*` as an installed package, which `uv sync` sets up.
 sidebar**: pages link to each other with `st.page_link`.
 
 - `app/navigation.py` defines one factory per page: `home_page()` (default,
-  URL `/`), `diffie_hellman_page()` (URL `/diffie-hellman`) and
-  `young_yung_setup_page()` (URL `/young-yung-setup`). Streamlit
+  URL `/`), `diffie_hellman_page()` (URL `/diffie-hellman`),
+  `young_yung_setup_page()` (URL `/young-yung-setup`) and
+  `encrypted_channel_page()` (URL `/encrypted-channel`). Streamlit
   identifies a page by its `url_path`, so a factory can be called wherever a
   link is needed.
 - Page modules import `navigation.py` to build links, so the factories
@@ -396,10 +401,13 @@ render_page_diffie_hellman()
   `render_component_number_format(*, key_prefix)`,
   `render_component_group_selection(*, key_prefix, number_format)` (toy or
   RFC group, callouts, and p/g/q; the toy group is cached in
-  `<prefix>_toy_parameters`) and
+  `<prefix>_toy_parameters`, and each RFC group is built once per process
+  by `_standard_group`) and
   `render_component_step_navigation(*, state_key, revealed, total)`.
 - **`content/numbers.py`**: `NumberFormat` (DECIMAL, HEXADECIMAL);
-  `parse_integer(text)`; `is_small(*values)`.
+  `parse_integer(text)`; `is_small(*values)`; `format_bytes(data)` (upper-case
+  hex in groups of 4 bytes, whatever the number format) and
+  `parse_bytes(text)` (hex, spaces and `0x` ignored).
   `format_integer(value, fmt, *, width_bits=None)` separates groups with
   spaces:
   - Decimal uses groups of 3 from the right, as a thousands separator.
@@ -470,7 +478,8 @@ render_page_young_yung_setup()
   device's and Bob's values from a timeline where the device is Alice), and
   formula helpers (`power_formula`, `z_formula`, `hash_formula`,
   `r_formula`, `z1_formula`, `z2_formula`) that substitute values only when
-  `is_small`. **UI notation is adapted to DH, not the paper's**: protocol
+  `is_small`; `r_formula` and `z1_formula` take an optional `first_symbol`
+  (default `A_1`), which the encrypted channel sets to `A_{i-1}`. **UI notation is adapted to DH, not the paper's**: protocol
   roles follow the honest section (device = Alice: `a1, a2` / `A1, A2`;
   Bob: `b1, b2` / `B1, B2`; secrets `s1, s2`), the paper's constants `a, b`
   become `α, β`, and the SETUP machinery keeps the paper's symbols
@@ -486,13 +495,93 @@ render_page_young_yung_setup()
   inferred t differs from the real one (both candidates hash to the same key
   in a tiny group), the recovery step explains it.
 
+#### Encrypted channel section (`pages/encrypted_channel.py`)
+
+The last step of the Young–Yung case study (4.7): the same SETUP inside a
+complete channel. Session and widget keys use the `ch_` prefix. Three tabs:
+
+```text
+render_page_encrypted_channel()
+   ├── css + back link + title + build_channel_intro_content()
+   │   + st.page_link to the SETUP section (prerequisite)
+   ├── "The idea":    build_channel_concept_content()  sessions and ephemeral
+   │                  keys, the ciphersuite (illustrative name
+   │                  CIPHERSUITE_NAME, flagged as not a registered TLS suite),
+   │                  Kerckhoffs table, how the SETUP breaks the channel,
+   │                  session 1 stays confidential, toy-group brute force
+   ├── "Participant": _render_participant()
+   │     number format + 1 · group (shared controls, prefix ch)
+   │     Backdoor(attacker, configuration) in ch_backdoor, regenerated only
+   │       when the group changes (it exists whatever device Alice uses)
+   │     2 · Alice's device: DeviceKind HONEST | COMPROMISED (ch_device_kind)
+   │     3 · messages: 2–5 sessions (ch_session_count), one message per
+   │       direction, editable (ch_message_<i>_{alice,bob}, examples in
+   │       DEFAULT_MESSAGES set through session_state so "Restore the example
+   │       messages" can put them back); empty = skipped, non-ASCII = error
+   │     4 · run (spinner, warning from 6144 bits): _run_experiment() runs
+   │       run_channel with the device or an honest participant and
+   │       intercept_channel ONCE → ChannelExperiment in ch_run; ch_run_count
+   │       is incremented
+   │     one st.tab per session: render_component_channel_session (exchange,
+   │       KDF, messages); stale if group, backdoor or device kind changed
+   └── "Attacker":    _render_attacker() on the last run (never the device kind)
+         number format (prefix ch_attacker)
+         1 · what you know: group, ciphersuite, render_component_backdoor
+         2 · transcript: render_component_transcript (one tab per session)
+         3 · workbench, session selector ch_attacker_session:
+             step 1 candidates from experiment.interception (never recomputed):
+               render_component_recovery (both rejected with an honest device)
+             step 2 a_i → s_i, step 3 s_i → K_i (derive_key),
+             step 4 K_i (hex) + message → decrypt, or the tag failure only
+               (no unauthenticated decryption is ever shown)
+             each field: _render_workbench_input with "Paste <symbol>" buttons
+               (a_i, or â1 and â2 with an honest device) and a "Ready to
+               paste" hint; fields start empty
+         4 · summary: render_component_interception_summary (table + expander
+             comparing with the device's derivations), Eve callout
+```
+
+- **Workbench keys** are `<prefix>_<run count>_<session>` (`_workbench_key`):
+  a widget that is not rendered loses its value, so changing the session or
+  running again empties every field and its result. Do not go back to one
+  key per field cleared by callbacks: that did not clear in the browser.
+- **Performance.** Every widget change reruns the whole page, and with
+  FFDHE8192 one `pow` takes about a second. Expensive work is done once and
+  kept: `intercept_channel` runs with the channel and its result lives in
+  `ChannelExperiment.interception` (step 1 and the summary read it); step 2
+  reuses `InterceptedSession.shared_secret` when the pasted key is the
+  recovered one and otherwise memoizes with `lru_cache` (`_shared_secret`);
+  `render_component_backdoor` reads Y from the configuration instead of
+  computing `g^X`; RFC groups are built once (`controls._standard_group`,
+  `functools.cache`). Running the channel itself stays slow with large
+  groups (about 15 s per session with FFDHE8192).
+- **`content/encrypted_channel.py`**: intro, concept, participant and
+  attacker builders, `DEFAULT_MESSAGES`, `session_step_definitions(i)` (3
+  steps of a session) and `workbench_step_definitions(i)` (4 attacker steps),
+  and the callouts (device choice, messages tip, indistinguishable, artifacts,
+  first session, recovery failed, Eve).
+- **`components/encrypted_channel.py`**: `DeviceKind`, `ChannelExperiment`
+  (device kind, attacker, configuration, run, derivations, interception;
+  `.parameters`), `render_component_step(number, definition)` (the bordered
+  step container, returned for the caller to fill), and
+  `render_component_{channel_session,key_derivation,encrypted_message,
+  transcript,recovery,interception_summary}`. `render_component_recovery`
+  takes `SetupCandidates` plus the recovered key or `None`.
+
 #### UX rules for interactive sections
 
 - No sidebar. Every section is reachable from a home card and has a back
   link to home.
 - Cryptographic values always go in wrapped code blocks via
-  `render_component_value`: never horizontal scroll, and always a
-  visibility badge.
+  `render_component_value` (integers), `render_component_bytes` (byte
+  strings, always hexadecimal in groups of 4 bytes via `format_bytes`) or
+  `render_component_text` (messages): never horizontal scroll, and always a
+  visibility badge. `highlight=True` tints the block orange (a keyed
+  container `computed-value-*` styled in `protocol.css`); use it only for
+  values the reader has just computed in the attacker's workbench, and
+  leave the rejected candidate untinted.
+- Never repeat modular exponentiations on every rerun: compute once with the
+  run and keep the result in the run's value object, or memoize.
 - Explain before showing: every step has plain-language text, a general
   formula, and concrete values when they are small enough.
 - Toy groups are labeled insecure; RFC groups are labeled as standardized.
@@ -529,8 +618,10 @@ render_page_young_yung_setup()
   `css/styles/<name>`. Both resolve paths relative to their own module.
 - Header and footer metadata (version `"1.0.0"`, release date, author,
   links, and the `kleptographic_mechanisms` list) is **hardcoded** in
-  `components/*.py`. When a new mechanism is added, update the header's
-  `kleptographic_mechanisms`.
+  `components/*.py`. Header pills stay short: `kleptographic_mechanisms`
+  names the targeted cryptosystem (`"Diffie-Hellman"` covers the SETUP and
+  the encrypted channel), not each section. Add an entry only for a new
+  target (e.g. RSA).
 - Widgets use explicit `key=`s prefixed by the section (`dh_…`), and
   section state lives in `st.session_state` under the same prefix.
 - Prefer Material icons (`:material/name:`) and Markdown badges
@@ -553,7 +644,7 @@ setup/
 ├── configuration.py # YoungYungConfiguration (frozen, kw_only): parameters,
 │                    # attacker_public_key (Y), multiplier_a, offset_b,
 │                    # correction_w (W, odd), hash_function
-├── records.py       # SetupDerivation, SetupRecovery (frozen value objects)
+├── records.py       # SetupDerivation, SetupCandidates, SetupRecovery (frozen)
 ├── construction.py  # pure equations: compute_z, derive_setup,
 │                    # derive_private_key (device); compute_r,
 │                    # recover_z_candidates (attacker)
@@ -606,6 +697,13 @@ attacker: r = m1^a * g^b,  z1 = m1 / r^X,  z2 = z1 / g^W   (mod p)
   another group or does not embed this attacker's Y, `InvalidPublicKey` for
   invalid public values, and `SetupRecoveryError` if neither candidate
   reproduces m2.
+  - `recover` is split in two public steps, so a failed recovery still
+    shows its work: `compute_candidates(*, first_public_key, configuration)
+    -> SetupCandidates(first_public_key, r, z_candidates,
+    private_key_candidates)` uses m1 alone (validates the configuration and
+    m1), and `match_candidates(candidates, *, second_public_key) ->
+    SetupRecovery` validates m2 and keeps the candidate that reproduces it,
+    or raises `SetupRecoveryError`.
 - **Model for the UI.** SETUP internals happen outside `perform_key_exchange`
   (the derivation runs in `generate_keypair()` before the second exchange,
   and recovery is done by an outside party), and the device does not know
@@ -788,23 +886,27 @@ crypto/channel/setup/  exceptions.py, records.py (InterceptionOutcome,
     `DiffieHellmanParametersMismatch` if the transcript uses another group,
     whatever the number of sessions. Session 1 is `NOT_RECOVERABLE`. For
     each i ≥ 2 it validates `B_i` (`InvalidPublicKey`), runs
-    `attacker.recover(A_{i-1}, A_i)` (not `recover_shared_secret`, to keep
-    the `SetupRecovery` for the UI), computes `s_i = B_i^{a_i}`,
+    `compute_candidates(A_{i-1})` then `match_candidates(…, A_i)` (not
+    `recover_shared_secret`, to keep the candidates and the `SetupRecovery`
+    for the UI), computes `s_i = B_i^{a_i}`,
     `derive_key(s_i, secret_length=parameters.byte_length)` and decrypts
     every message. A `SetupRecoveryError` (e.g. honest Alice) becomes
-    `RECOVERY_FAILED`, never an exception, so the UI can apply the same
-    attacker to an honest channel. A message whose GCM tag fails (only a
+    `RECOVERY_FAILED`, never an exception, and keeps its rejected
+    candidates, so the UI can apply the same attacker to an honest channel
+    and follow the chain to a wrong key. A message whose GCM tag fails (only a
     tampered ciphertext: a matching candidate is `a_i` itself) gets
     `plaintext=None`.
   - `records.py`: `InterceptionOutcome` (`StrEnum`: `NOT_RECOVERABLE`,
     `RECOVERY_FAILED`, `RECOVERED`); `InterceptedMessage(transcript,
     plaintext)` with `.sender`, `.encrypted`, `.readable`;
-    `InterceptedSession(transcript, outcome, recovery, shared_secret,
-    key_derivation, messages)` with `.number`, `.recovered`, `.readable`;
+    `InterceptedSession(transcript, outcome, candidates, recovery,
+    shared_secret, key_derivation, messages)` with `.number`, `.recovered`,
+    `.readable`;
     `ChannelInterception(parameters, sessions)`. Invariants
     (`InvalidChannelInterception`): only session 1, and always session 1,
-    is `NOT_RECOVERABLE`; messages wrap exactly the transcript's; a
-    recovered session has its recovery (targeting `A_i`), secret and key
+    is `NOT_RECOVERABLE`; every session but the first has `candidates`;
+    messages wrap exactly the transcript's; a recovered session has its
+    recovery (built from its candidates and targeting `A_i`), secret and key
     (derived from that secret); any other session reveals nothing.
   - `exceptions.py`: `InvalidChannelInterception(ChannelError, ValueError)`.
   - In a toy group an honest `a_i` can equal a SETUP candidate by chance
@@ -832,9 +934,8 @@ same validation as honest ones, and isolation (`kdf`/`aead` never import
 `dh`; `channel` never imports `channel.setup` or `dh.setup`; `channel.setup`
 imports only `channel`, `dh`, `kdf`, `aead` and `math`).
 
-**UI** (later): fourth tab "Encrypted channel" in `/young-yung-setup`,
-`content/encrypted_channel.py` and `components/encrypted_channel.py`; one
-row per session with what Bob, Eve and the attacker see.
+**UI**: its own page `/encrypted-channel`, not a tab of the SETUP section
+(see 4.5, "Encrypted channel section").
 
 ## 5. Known limitations and pending cleanups
 
@@ -843,7 +944,14 @@ the affected code.
 
 - The interactive sections have not been reviewed visually in a browser by
   an agent; they were only executed headless with `streamlit.testing`
-  (AppTest), without rendering KaTeX or Markdown tables.
+  (AppTest), without rendering KaTeX or Markdown tables. The maintainer
+  reviewed the encrypted channel section in the browser.
+- Streamlit 1.63 (Starlette server, no Tornado fallback) logs a
+  `RuntimeError: WebSocket is not connected` / `Cannot call "send" once a
+  close message has been sent` traceback from its own websocket handler when
+  it sends to a browser that already left, most likely after a reload during
+  a long run. It is not raised by project code and does not affect the app;
+  it could not be reproduced with a plain client disconnect.
 - The SETUP section does not yet show an honest device side by side with
   the compromised one (4.6 asks for them to be directly comparable); it
   states that the transcript passes the same validation instead.
