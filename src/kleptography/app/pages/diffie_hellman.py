@@ -18,7 +18,11 @@ from kleptography.app.components.controls import (
     render_component_step_navigation,
 )
 from kleptography.app.components.footer import render_component_footer
-from kleptography.app.components.navigation import render_component_back_home
+from kleptography.app.components.navigation import (
+    PageAnchor,
+    render_component_back_home,
+    render_component_page_sidebar,
+)
 from kleptography.app.components.protocol import (
     ValueDisplay,
     render_component_protocol_step,
@@ -42,6 +46,13 @@ from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
 _PREFIX = "dh"
 _RUN = "dh_run"
 _REVEALED = "dh_revealed"
+
+# The headings of the section, for the sidebar.
+_ANCHORS = (
+    PageAnchor("1 · Choose the public parameters", "dh-parameters"),
+    PageAnchor("2 · Choose the private keys", "dh-keys"),
+    PageAnchor("3 · Run the exchange", "dh-run"),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,12 +84,13 @@ def render_page_diffie_hellman() -> None:
     _render_run_section(parameters, private_keys)
     _render_timeline_section(parameters, number_format)
 
+    render_component_page_sidebar(_ANCHORS, key_prefix=_PREFIX)
     render_component_footer()
 
 
 def _render_parameters_section(number_format: NumberFormat) -> DiffieHellmanParameters:
     """Render section 1 and return the selected group."""
-    st.header("1 · Choose the public parameters")
+    st.header("1 · Choose the public parameters", anchor="dh-parameters")
     return render_component_group_selection(
         key_prefix=_PREFIX, number_format=number_format
     )
@@ -88,7 +100,7 @@ def _render_private_keys_section(
     parameters: DiffieHellmanParameters,
 ) -> tuple[int, int] | None:
     """Render section 2 and return the chosen keys, if any."""
-    st.header("2 · Choose the private keys")
+    st.header("2 · Choose the private keys", anchor="dh-keys")
     st.markdown(
         "Each participant needs a secret number between $1$ and $q - 1$. "
         "Normally it is chosen at random, but you can pick your own to "
@@ -135,7 +147,7 @@ def _render_run_section(
     private_keys: tuple[int, int] | None,
 ) -> None:
     """Render section 3 and run the exchange when the button is pressed."""
-    st.header("3 · Run the exchange")
+    st.header("3 · Run the exchange", anchor="dh-run")
 
     waiting_for_keys = (
         st.session_state.get("dh_key_mode") == KeyMode.CHOSEN and private_keys is None

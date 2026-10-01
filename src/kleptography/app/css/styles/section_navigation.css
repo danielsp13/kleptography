@@ -98,6 +98,11 @@
     list-style: none;
 }
 
+/* A section without tabs: the headings sit directly under "On this page". */
+[class*="st-key-section-anchors-page"] ul {
+    margin-left: 0;
+}
+
 [class*="st-key-section-anchors"] li {
     margin: 0;
     padding: 0.2rem 0;

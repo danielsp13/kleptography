@@ -153,30 +153,55 @@ def render_component_section_sidebar(
                 key=f"section-sidebar-tab-{state_key}-{index}",
             )
             if is_active and tab.anchors:
-                with st.container(key=f"section-anchors-{state_key}"):
-                    st.markdown(
-                        "\n".join(
-                            f"- [{anchor.label}](#{anchor.anchor})"
-                            for anchor in tab.anchors
-                        )
-                    )
+                _render_sidebar_anchors(tab.anchors, key=f"section-anchors-{state_key}")
 
-        st.divider()
-        _render_sidebar_heading("Sections")
-        st.page_link(home_page(), label="Home", icon=":material/home:")
-        st.page_link(
-            diffie_hellman_page(), label="Diffie-Hellman", icon=":material/key:"
+        _render_sidebar_sections()
+
+
+def render_component_page_sidebar(
+    anchors: Sequence[PageAnchor], *, key_prefix: str
+) -> None:
+    """Render the sidebar of a section without tabs: its headings and the sections.
+
+    The headings are anchor links. Below, links to home and to every
+    interactive section.
+
+    Args:
+        anchors: The headings of the section, in display order.
+        key_prefix: The section's widget key prefix (e.g. ``dh``).
+    """
+    render_html("", css=load_css("section_navigation.css"))
+
+    with st.sidebar:
+        _render_sidebar_heading("On this page")
+        _render_sidebar_anchors(anchors, key=f"section-anchors-page-{key_prefix}")
+        _render_sidebar_sections()
+
+
+def _render_sidebar_anchors(anchors: Sequence[PageAnchor], *, key: str) -> None:
+    """Render headings of the page as a list of anchor links."""
+    with st.container(key=key):
+        st.markdown(
+            "\n".join(f"- [{anchor.label}](#{anchor.anchor})" for anchor in anchors)
         )
-        st.page_link(
-            young_yung_setup_page(),
-            label="Young–Yung SETUP",
-            icon=":material/policy:",
-        )
-        st.page_link(
-            encrypted_channel_page(),
-            label="Encrypted channel",
-            icon=":material/lock:",
-        )
+
+
+def _render_sidebar_sections() -> None:
+    """Render the links to home and to every interactive section."""
+    st.divider()
+    _render_sidebar_heading("Sections")
+    st.page_link(home_page(), label="Home", icon=":material/home:")
+    st.page_link(diffie_hellman_page(), label="Diffie-Hellman", icon=":material/key:")
+    st.page_link(
+        young_yung_setup_page(),
+        label="Young–Yung SETUP",
+        icon=":material/policy:",
+    )
+    st.page_link(
+        encrypted_channel_page(),
+        label="Encrypted channel",
+        icon=":material/lock:",
+    )
 
 
 def _render_sidebar_heading(text: str) -> None:
