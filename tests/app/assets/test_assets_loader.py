@@ -1,3 +1,10 @@
+"""Tests for the asset loader.
+
+They check path resolution inside the assets directory, base64 encoding of
+the file bytes, the shape of the ``data:`` URI, and that read and encoding
+errors propagate. The file system is patched, so no real file is read.
+"""
+
 import base64
 from pathlib import Path
 from unittest.mock import patch
@@ -6,6 +13,7 @@ from kleptography.app.assets.loader import asset_base64, asset_data_uri, asset_p
 
 
 def test_asset_path_returns_path_relative_to_loader_module() -> None:
+    """Paths are resolved inside the assets directory."""
     with patch(
         "kleptography.app.assets.loader._ASSETS_DIR",
         Path("/assets"),
@@ -16,6 +24,7 @@ def test_asset_path_returns_path_relative_to_loader_module() -> None:
 
 
 def test_asset_path_with_single_part() -> None:
+    """A single part names a file in the assets directory."""
     with patch(
         "kleptography.app.assets.loader._ASSETS_DIR",
         Path("/assets"),
@@ -26,6 +35,7 @@ def test_asset_path_with_single_part() -> None:
 
 
 def test_asset_path_with_multiple_parts() -> None:
+    """Several parts are joined as nested directories."""
     with patch(
         "kleptography.app.assets.loader._ASSETS_DIR",
         Path("/assets"),
@@ -36,6 +46,7 @@ def test_asset_path_with_multiple_parts() -> None:
 
 
 def test_asset_path_with_no_parts() -> None:
+    """No parts give the assets directory itself."""
     with patch(
         "kleptography.app.assets.loader._ASSETS_DIR",
         Path("/assets"),
@@ -46,6 +57,7 @@ def test_asset_path_with_no_parts() -> None:
 
 
 def test_asset_base64_encodes_file_contents() -> None:
+    """The file bytes are encoded in base64."""
     file_content = b"hello world"
 
     with patch(
@@ -64,6 +76,7 @@ def test_asset_base64_encodes_file_contents() -> None:
 
 
 def test_asset_base64_encodes_binary_contents() -> None:
+    """Arbitrary binary content is encoded correctly."""
     file_content = bytes(range(256))
 
     with patch(
@@ -80,6 +93,7 @@ def test_asset_base64_encodes_binary_contents() -> None:
 
 
 def test_asset_base64_with_multiple_path_parts() -> None:
+    """The path parts are forwarded to the path resolution."""
     file_content = b"asset content"
 
     with patch(
@@ -97,6 +111,7 @@ def test_asset_base64_with_multiple_path_parts() -> None:
 
 
 def test_asset_base64_reads_bytes_from_resolved_path() -> None:
+    """The bytes are read from the resolved path."""
     path = Path("/assets/test.bin")
 
     with patch(
@@ -114,6 +129,7 @@ def test_asset_base64_reads_bytes_from_resolved_path() -> None:
 
 
 def test_asset_base64_propagates_file_read_error() -> None:
+    """A read error propagates unchanged."""
     error = FileNotFoundError("asset not found")
 
     with patch(
@@ -133,6 +149,7 @@ def test_asset_base64_propagates_file_read_error() -> None:
 
 
 def test_asset_data_uri_builds_expected_uri() -> None:
+    """The data URI combines the media type and the base64 content."""
     encoded = "aGVsbG8="
 
     with patch(
@@ -146,6 +163,7 @@ def test_asset_data_uri_builds_expected_uri() -> None:
 
 
 def test_asset_data_uri_with_multiple_path_parts() -> None:
+    """The path parts are forwarded to the encoding."""
     encoded = "iVBORw0KGgo="
 
     with patch(
@@ -163,6 +181,7 @@ def test_asset_data_uri_with_multiple_path_parts() -> None:
 
 
 def test_asset_data_uri_supports_different_mime_types() -> None:
+    """Any media type is accepted."""
     with patch(
         "kleptography.app.assets.loader.asset_base64",
         return_value="YWJj",
@@ -174,6 +193,7 @@ def test_asset_data_uri_supports_different_mime_types() -> None:
 
 
 def test_asset_data_uri_with_empty_encoded_content() -> None:
+    """An empty asset gives a data URI with no content."""
     with patch(
         "kleptography.app.assets.loader.asset_base64",
         return_value="",
@@ -184,6 +204,7 @@ def test_asset_data_uri_with_empty_encoded_content() -> None:
 
 
 def test_asset_data_uri_propagates_asset_base64_error() -> None:
+    """An encoding error propagates unchanged."""
     error = RuntimeError("encoding failed")
 
     with patch(
@@ -201,6 +222,7 @@ def test_asset_data_uri_propagates_asset_base64_error() -> None:
 
 
 def test_asset_base64_matches_real_base64_encoding() -> None:
+    """The encoding matches the standard library's base64."""
     content = "Kleptography 🦊".encode("utf-8")
 
     with patch(
@@ -217,6 +239,7 @@ def test_asset_base64_matches_real_base64_encoding() -> None:
 
 
 def test_asset_data_uri_uses_base64_result_without_modification() -> None:
+    """The base64 content is inserted unchanged."""
     encoded = "ABC+/=123"
 
     with patch(

@@ -1,3 +1,9 @@
+"""Tests for the KDF exception hierarchy.
+
+They check that KDF errors are independent of the DH and AEAD hierarchies
+and that each one is also the matching builtin.
+"""
+
 from __future__ import annotations
 
 import pytest

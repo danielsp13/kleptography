@@ -1,3 +1,9 @@
+"""Tests for the channel exception hierarchy.
+
+They check that channel errors are independent of the DH, KDF and AEAD
+hierarchies and that each one is also the matching builtin.
+"""
+
 from __future__ import annotations
 
 import pytest

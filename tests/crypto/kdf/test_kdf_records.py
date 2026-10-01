@@ -1,3 +1,10 @@
+"""Tests for ``KeyDerivation``, the intermediate values of a key derivation.
+
+They check that it keeps every value unchanged and immutable, hides the
+secrets from repr, and rejects an encoding that does not match the secret
+or a key that is not 32 bytes.
+"""
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError

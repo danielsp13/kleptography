@@ -1,3 +1,10 @@
+"""Tests for ``derive_key``, the SP 800-56C one-step KDF with SHA-256.
+
+They recompute every key independently with ``hashlib``, pin one vector,
+and check the fixed-width encoding of Z, determinism, the 32-byte output and
+the rejection of invalid inputs.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -14,6 +21,7 @@ TOY_LENGTH = 1
 
 
 def _expected_key(encoded_secret: bytes) -> bytes:
+    """Return SHA-256(counter || Z || OtherInfo), computed with hashlib."""
     # SP 800-56C one-step KDF, recomputed with hashlib: one block, counter 1.
     return hashlib.sha256(b"\x00\x00\x00\x01" + encoded_secret + OTHER_INFO).digest()
 

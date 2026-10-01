@@ -1,3 +1,10 @@
+"""Tests for the stylesheet loader.
+
+They check that stylesheets are read once, as UTF-8, from the styles
+directory, that their content is returned exactly, and that file errors
+propagate. The file system is patched, so no real file is read.
+"""
+
 from pathlib import Path
 from unittest.mock import patch
 
@@ -5,6 +12,7 @@ from kleptography.app.css.loader import load_css
 
 
 def test_load_css_reads_file_with_utf8() -> None:
+    """Stylesheets are read as UTF-8."""
     with patch(
         "kleptography.app.css.loader.Path.read_text",
         return_value=".example { color: red; }",
@@ -16,6 +24,7 @@ def test_load_css_reads_file_with_utf8() -> None:
 
 
 def test_load_css_uses_css_directory() -> None:
+    """The stylesheet is read from the styles directory."""
     with patch(
         "kleptography.app.css.loader._CSS_DIR",
         Path("/project/styles"),
@@ -31,6 +40,7 @@ def test_load_css_uses_css_directory() -> None:
 
 
 def test_load_css_with_nested_filename() -> None:
+    """Nested names are resolved inside the styles directory."""
     with patch(
         "kleptography.app.css.loader._CSS_DIR",
         Path("/project/styles"),
@@ -46,6 +56,7 @@ def test_load_css_with_nested_filename() -> None:
 
 
 def test_load_css_with_empty_file() -> None:
+    """An empty stylesheet gives an empty string."""
     with patch(
         "kleptography.app.css.loader.Path.read_text",
         return_value="",
@@ -56,6 +67,7 @@ def test_load_css_with_empty_file() -> None:
 
 
 def test_load_css_preserves_file_contents_exactly() -> None:
+    """The content is returned unchanged."""
     css = """
 body {
     margin: 0;
@@ -77,6 +89,7 @@ body {
 
 
 def test_load_css_returns_unicode_contents() -> None:
+    """Non-ASCII content is preserved."""
     css = "/* Café — documentación */\nbody { font-family: 'Ñ'; }"
 
     with patch(
@@ -89,6 +102,7 @@ def test_load_css_returns_unicode_contents() -> None:
 
 
 def test_load_css_propagates_file_not_found_error() -> None:
+    """A missing stylesheet raises FileNotFoundError."""
     error = FileNotFoundError("CSS file not found")
 
     with patch(
@@ -104,6 +118,7 @@ def test_load_css_propagates_file_not_found_error() -> None:
 
 
 def test_load_css_propagates_permission_error() -> None:
+    """A permission error propagates unchanged."""
     error = PermissionError("Permission denied")
 
     with patch(
@@ -119,6 +134,7 @@ def test_load_css_propagates_permission_error() -> None:
 
 
 def test_load_css_with_empty_name() -> None:
+    """An empty name resolves to the styles directory."""
     with patch(
         "kleptography.app.css.loader._CSS_DIR",
         Path("/project/styles"),
@@ -134,6 +150,7 @@ def test_load_css_with_empty_name() -> None:
 
 
 def test_load_css_with_name_containing_spaces() -> None:
+    """Names with spaces are accepted."""
     with patch(
         "kleptography.app.css.loader._CSS_DIR",
         Path("/project/styles"),
@@ -149,6 +166,7 @@ def test_load_css_with_name_containing_spaces() -> None:
 
 
 def test_css_dir_is_path() -> None:
+    """The styles directory is a Path named "styles"."""
     from kleptography.app.css import loader
 
     assert isinstance(loader._CSS_DIR, Path)
@@ -156,6 +174,7 @@ def test_css_dir_is_path() -> None:
 
 
 def test_load_css_calls_read_text_exactly_once() -> None:
+    """The file is read once per call."""
     with patch(
         "kleptography.app.css.loader.Path.read_text",
         return_value="body {}",

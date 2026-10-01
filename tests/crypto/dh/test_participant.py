@@ -1,3 +1,10 @@
+"""Tests for ``DiffieHellmanParticipant``, the honest participant.
+
+They check key generation and loading, the invariant public = g^x mod p,
+the read-only key material, the shared secret, and the errors raised when a
+key pair or the peer's public value is missing.
+"""
+
 from __future__ import annotations
 
 import pytest

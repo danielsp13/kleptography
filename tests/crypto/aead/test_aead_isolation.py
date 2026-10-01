@@ -1,4 +1,5 @@
-"""
+"""Isolation tests for the AEAD package.
+
 The AEAD package is generic: it never depends on DH or other schemes.
 """
 
@@ -15,6 +16,7 @@ AEAD_MODULES = sorted(AEAD_ROOT.rglob("*.py"))
 
 
 def test_aead_modules_are_found() -> None:
+    """The scan covers every AEAD module."""
     names = {path.name for path in AEAD_MODULES}
 
     assert {"aes_gcm.py", "exceptions.py", "records.py"} <= names
@@ -26,6 +28,7 @@ def test_aead_modules_are_found() -> None:
     ids=[str(path.relative_to(AEAD_ROOT)) for path in AEAD_MODULES],
 )
 def test_aead_module_imports_only_itself(path: Path) -> None:
+    """AEAD modules import only the AEAD package."""
     project_imports = [
         line
         for line in path.read_text(encoding="utf-8").splitlines()

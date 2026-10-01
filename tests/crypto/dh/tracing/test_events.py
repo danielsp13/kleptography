@@ -1,3 +1,12 @@
+"""Tests for the tracing value objects.
+
+The objects under test are ``Actor``, ``ProtocolEventType`` and
+``ProtocolEvent``.
+
+They check the stable string values of the enums, that events reject a
+sequence below 1, and that event data is copied into a read-only mapping.
+"""
+
 from types import MappingProxyType
 from typing import cast
 
@@ -11,12 +20,14 @@ from kleptography.crypto.dh.tracing.events import (
 
 
 def test_actor_values() -> None:
+    """The actors have stable string values."""
     assert Actor.SYSTEM.value == "system"
     assert Actor.ALICE.value == "alice"
     assert Actor.BOB.value == "bob"
 
 
 def test_protocol_event_type_values() -> None:
+    """The event types have stable string values."""
     assert ProtocolEventType.PARAMETERS_SELECTED.value == "parameters_selected"
     assert ProtocolEventType.PARAMETERS_VALIDATED.value == "parameters_validated"
     assert ProtocolEventType.PRIVATE_KEY_GENERATED.value == "private_key_generated"
@@ -28,6 +39,7 @@ def test_protocol_event_type_values() -> None:
 
 
 def test_protocol_event_stores_data_as_immutable_mapping() -> None:
+    """Event data is stored as a read-only mapping."""
     data = {
         "prime": 23,
         "generator": 5,
@@ -46,6 +58,7 @@ def test_protocol_event_stores_data_as_immutable_mapping() -> None:
 
 
 def test_protocol_event_copies_input_data() -> None:
+    """Later changes to the input data do not affect the event."""
     data = {"value": 23}
 
     event = ProtocolEvent(
@@ -61,6 +74,7 @@ def test_protocol_event_copies_input_data() -> None:
 
 
 def test_protocol_event_data_cannot_be_modified() -> None:
+    """Event data cannot be modified."""
     event = ProtocolEvent(
         sequence=1,
         event_type=ProtocolEventType.PARAMETERS_SELECTED,
@@ -75,6 +89,7 @@ def test_protocol_event_data_cannot_be_modified() -> None:
 
 
 def test_protocol_event_rejects_zero_sequence() -> None:
+    """A sequence of 0 is rejected."""
     with pytest.raises(
         ValueError,
         match="Protocol event sequence must be greater than zero",
@@ -87,6 +102,7 @@ def test_protocol_event_rejects_zero_sequence() -> None:
 
 
 def test_protocol_event_rejects_negative_sequence() -> None:
+    """A negative sequence is rejected."""
     with pytest.raises(
         ValueError,
         match="Protocol event sequence must be greater than zero",
@@ -99,6 +115,7 @@ def test_protocol_event_rejects_negative_sequence() -> None:
 
 
 def test_protocol_event_default_data_is_empty() -> None:
+    """An event without data has an empty mapping."""
     event = ProtocolEvent(
         sequence=1,
         event_type=ProtocolEventType.PARAMETERS_SELECTED,

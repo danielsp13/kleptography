@@ -1,4 +1,12 @@
-"""
+"""Tests for the SETUP equations of the device and the attacker.
+
+The functions under test are ``compute_z``, ``derive_setup``, ``compute_r``
+and ``recover_z_candidates``.
+
+They check the hand-computed test vectors, agreement with an independent
+reference for every input of small groups, the use of the configured H,
+and the rejection of invalid exponents, bits, public keys and H outputs.
+
 Test vectors in the toy group p = 23, g = 2, q = 11.
 
 Attacker X = 3, Y = 8. Constants a = 2, b = 2, W = 3. H(v) = v mod 10 + 1.
@@ -39,6 +47,7 @@ def toy_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
@@ -46,6 +55,7 @@ def build_configuration(
     parameters: DiffieHellmanParameters,
     hash_function: SetupHashFunction = toy_hash,
 ) -> YoungYungConfiguration:
+    """Return the test-vector configuration with the given H."""
     return YoungYungConfiguration(
         parameters=parameters,
         attacker_public_key=8,
@@ -58,6 +68,7 @@ def build_configuration(
 
 @pytest.fixture
 def configuration(parameters: DiffieHellmanParameters) -> YoungYungConfiguration:
+    """Return the test-vector configuration with the readable toy H."""
     return build_configuration(parameters)
 
 
@@ -67,6 +78,7 @@ def test_compute_z_matches_test_vector(
     correction_bit: int,
     expected_z: int,
 ) -> None:
+    """The value z matches the test vector for both t."""
     z = compute_z(6, correction_bit=correction_bit, configuration=configuration)
 
     assert z == expected_z
@@ -77,6 +89,7 @@ def test_compute_z_rejects_invalid_correction_bit(
     configuration: YoungYungConfiguration,
     correction_bit: int,
 ) -> None:
+    """A correction bit other than 0 or 1 is rejected."""
     with pytest.raises(ValueError):
         compute_z(6, correction_bit=correction_bit, configuration=configuration)
 
@@ -86,6 +99,7 @@ def test_compute_z_rejects_invalid_previous_private_key(
     configuration: YoungYungConfiguration,
     previous_private_key: int,
 ) -> None:
+    """An exponent outside [1, q - 1] is rejected."""
     with pytest.raises(InvalidPrivateKey):
         compute_z(
             previous_private_key,
@@ -100,6 +114,7 @@ def test_derive_private_key_matches_test_vector(
     correction_bit: int,
     expected_key: int,
 ) -> None:
+    """c2 matches the test vector for both t."""
     private_key = derive_private_key(
         6,
         correction_bit=correction_bit,
@@ -112,6 +127,7 @@ def test_derive_private_key_matches_test_vector(
 def test_derive_private_key_uses_configured_hash(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """c2 is H(z) with the configured H."""
     received: list[int] = []
 
     def recording_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
@@ -131,6 +147,8 @@ def test_derive_private_key_rejects_invalid_hash_output(
     parameters: DiffieHellmanParameters,
     hash_output: int,
 ) -> None:
+    """An H output outside [1, q - 1] is rejected."""
+
     def broken_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
         return hash_output
 
@@ -143,6 +161,7 @@ def test_derive_private_key_rejects_invalid_hash_output(
 def test_recover_z_candidates_matches_test_vector(
     configuration: YoungYungConfiguration,
 ) -> None:
+    """The attacker's candidates are (3, 9)."""
     candidates = recover_z_candidates(
         18,
         attacker_private_key=3,
@@ -157,6 +176,7 @@ def test_recover_z_candidates_rejects_invalid_public_key(
     configuration: YoungYungConfiguration,
     first_public_key: int,
 ) -> None:
+    """An invalid m1 is rejected."""
     with pytest.raises(InvalidPublicKey):
         recover_z_candidates(
             first_public_key,
@@ -170,6 +190,7 @@ def test_recover_z_candidates_rejects_invalid_attacker_key(
     configuration: YoungYungConfiguration,
     attacker_private_key: int,
 ) -> None:
+    """An attacker key outside [1, q - 1] is rejected."""
     with pytest.raises(InvalidPrivateKey):
         recover_z_candidates(
             18,
@@ -266,7 +287,7 @@ def reference_z(
     correction_bit: int,
     configuration: YoungYungConfiguration,
 ) -> int:
-    """z = g^(c1 - W*t) * Y^(-a*c1 - b) mod p."""
+    """Reference: z = g^(c1 - W*t) * Y^(-a*c1 - b) mod p."""
     prime = configuration.parameters.prime
     generator = configuration.parameters.generator
     left = pow(
@@ -287,7 +308,7 @@ def reference_candidates(
     attacker_private_key: int,
     configuration: YoungYungConfiguration,
 ) -> tuple[int, int]:
-    """r = m1^a * g^b, z1 = m1 / r^X, z2 = z1 / g^W, all modulo p."""
+    """Reference: r = m1^a * g^b, z1 = m1 / r^X, z2 = z1 / g^W, modulo p."""
     prime = configuration.parameters.prime
     generator = configuration.parameters.generator
     r = (
@@ -316,6 +337,7 @@ def build_general_configuration(
     constants: tuple[int, int, int, int, int, int, int],
     hash_function: SetupHashFunction = toy_hash,
 ) -> tuple[YoungYungConfiguration, int]:
+    """Build a configuration and its X from (p, g, q, X, a, b, W)."""
     prime, generator, subgroup_order, attacker_private_key, a, b, w = constants
     parameters = DiffieHellmanParameters(
         prime=prime, generator=generator, subgroup_order=subgroup_order
@@ -335,6 +357,7 @@ def build_general_configuration(
 def test_compute_z_matches_reference_for_every_input(
     constants: tuple[int, int, int, int, int, int, int],
 ) -> None:
+    """The value z matches the reference for every c1 and t."""
     configuration, _ = build_general_configuration(constants)
     parameters = configuration.parameters
 
@@ -356,6 +379,7 @@ def test_compute_z_matches_reference_for_every_input(
 def test_recover_z_candidates_matches_reference_for_every_input(
     constants: tuple[int, int, int, int, int, int, int],
 ) -> None:
+    """The candidates match the reference for every c1."""
     configuration, attacker_private_key = build_general_configuration(constants)
     parameters = configuration.parameters
 
@@ -427,6 +451,7 @@ def test_derive_private_key_is_hash_of_z_for_every_input(
 def test_derive_private_key_passes_configuration_parameters_to_hash(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """H receives the configuration's group."""
     received: list[DiffieHellmanParameters] = []
 
     def recording_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
@@ -445,6 +470,7 @@ def test_derive_private_key_rejects_invalid_previous_private_key(
     configuration: YoungYungConfiguration,
     previous_private_key: int,
 ) -> None:
+    """An exponent outside [1, q - 1] is rejected."""
     with pytest.raises(InvalidPrivateKey):
         derive_private_key(
             previous_private_key,
@@ -458,6 +484,7 @@ def test_derive_private_key_rejects_invalid_correction_bit(
     configuration: YoungYungConfiguration,
     correction_bit: int,
 ) -> None:
+    """A correction bit other than 0 or 1 is rejected."""
     with pytest.raises(ValueError):
         derive_private_key(
             6,
@@ -491,6 +518,7 @@ def test_compute_z_validates_against_configuration_group(
 def test_compute_z_rejects_exponent_equal_to_configuration_order(
     larger_configuration: YoungYungConfiguration,
 ) -> None:
+    """c1 = q is rejected in the configuration's group."""
     with pytest.raises(InvalidPrivateKey):
         compute_z(23, correction_bit=0, configuration=larger_configuration)
 
@@ -559,6 +587,7 @@ def test_derive_setup_records_intermediate_values(
     expected_z: int,
     expected_key: int,
 ) -> None:
+    """The derivation exposes c1, t, z and c2."""
     derivation = derive_setup(
         6,
         correction_bit=correction_bit,
@@ -574,6 +603,7 @@ def test_derive_setup_records_intermediate_values(
 
 
 def test_setup_derivation_is_frozen(configuration: YoungYungConfiguration) -> None:
+    """A derivation cannot be modified."""
     derivation = derive_setup(6, correction_bit=0, configuration=configuration)
 
     with pytest.raises(FrozenInstanceError):
@@ -585,6 +615,8 @@ def test_derive_setup_rejects_invalid_hash_output(
     parameters: DiffieHellmanParameters,
     hash_output: int,
 ) -> None:
+    """An H output outside [1, q - 1] is rejected."""
+
     def broken_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
         return hash_output
 
@@ -597,7 +629,7 @@ def test_derive_setup_rejects_invalid_hash_output(
 def test_compute_r_matches_test_vector(
     configuration: YoungYungConfiguration,
 ) -> None:
-    """r = 18^2 * 2^2 mod 23 = 8 = g^(a*c1 + b)."""
+    """The value r = 18^2 * 2^2 mod 23 = 8 = g^(a*c1 + b)."""
     assert compute_r(18, configuration=configuration) == 8
 
 
@@ -626,5 +658,6 @@ def test_compute_r_rejects_invalid_public_key(
     configuration: YoungYungConfiguration,
     first_public_key: int,
 ) -> None:
+    """An invalid m1 is rejected."""
     with pytest.raises(InvalidPublicKey):
         compute_r(first_public_key, configuration=configuration)

@@ -1,5 +1,8 @@
-"""
-Tests for prime number utilities.
+"""Tests for the prime number utilities.
+
+They check that generated safe primes have the requested size and satisfy
+p = 2q + 1 with q prime, that subgroup generators have order q, and that
+invalid inputs and SymPy failures are rejected.
 """
 
 from __future__ import annotations
@@ -54,10 +57,7 @@ def test_generate_safe_prime_rejects_too_few_bits(bits: int) -> None:
 def test_generate_safe_prime_retries_when_candidate_is_not_safe_prime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """
-    generate_safe_prime should retry when the generated q does not produce
-    a prime p = 2q + 1.
-    """
+    """generate_safe_prime should retry until p = 2q + 1 is prime."""
     # The first q produces p = 11, which we mark as non-prime.
     # The second q produces p = 23, which we mark as prime.
     randprime = Mock(side_effect=[5, 11])
@@ -108,8 +108,7 @@ def test_generate_subgroup_generator_belongs_to_subgroup() -> None:
 
 
 def test_generate_subgroup_generator_is_not_a_primitive_root() -> None:
-    """
-    A subgroup generator has order q, not p - 1.
+    """A subgroup generator has order q, not p - 1.
 
     Therefore g^q = 1 while a primitive root would have g^q != 1.
     """
@@ -135,10 +134,7 @@ def test_generate_subgroup_generator_raises_when_no_primitive_root_exists(
 def test_generate_subgroup_generator_converts_primitive_root_to_int(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """
-    The primitive root returned by SymPy should be converted to int before
-    exponentiation.
-    """
+    """The primitive root from SymPy should be converted to int first."""
     primitive_root = Mock()
     primitive_root.__int__ = Mock(return_value=5)
 

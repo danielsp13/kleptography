@@ -1,3 +1,10 @@
+"""Tests for ``hash_to_exponent``, the SETUP's hash function H.
+
+They check the SHAKE-256 construction against an independent computation,
+that the output is an exponent in [1, q - 1], that inputs outside
+[1, p - 1] are rejected, and that distinct inputs give distinct outputs.
+"""
+
 from __future__ import annotations
 
 import pytest
@@ -11,6 +18,7 @@ from kleptography.crypto.dh.validation import validate_private_key
 
 @pytest.fixture
 def toy_parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
@@ -39,6 +47,7 @@ def test_hash_rejects_values_outside_group(
     toy_parameters: DiffieHellmanParameters,
     value: int,
 ) -> None:
+    """Values outside [1, p - 1] are rejected."""
     with pytest.raises(ValueError):
         hash_to_exponent(value, parameters=toy_parameters)
 
@@ -55,8 +64,7 @@ def test_hash_spreads_distinct_inputs() -> None:
 
 
 def test_hash_covers_full_exponent_range_of_rfc_group() -> None:
-    """
-    H must cover [1, q - 1], as c2 does in the paper.
+    """H must cover [1, q - 1], as c2 does in the paper.
 
     A truncated 256-bit digest would give exponents of at most 256 bits. With
     16 uniform samples, the chance that none exceeds bit_length(q) - 16 is
@@ -99,6 +107,7 @@ def test_hash_output_is_a_valid_private_key_in_small_groups(
 
 
 def test_hash_accepts_boundary_values_of_rfc_group() -> None:
+    """The boundary values of FFDHE2048 hash into [1, q - 1]."""
     parameters = ffdhe2048()
 
     for value in (1, 2, parameters.prime - 1):
@@ -108,6 +117,7 @@ def test_hash_accepts_boundary_values_of_rfc_group() -> None:
 
 
 def test_hash_rejects_values_outside_rfc_group() -> None:
+    """The value p is rejected in FFDHE2048."""
     parameters = ffdhe2048()
 
     with pytest.raises(ValueError):
@@ -117,6 +127,7 @@ def test_hash_rejects_values_outside_rfc_group() -> None:
 def test_hash_parameters_are_keyword_only(
     toy_parameters: DiffieHellmanParameters,
 ) -> None:
+    """The group cannot be passed by position."""
     with pytest.raises(TypeError):
         hash_to_exponent(12, toy_parameters)  # ty: ignore[too-many-positional-arguments, missing-argument]
 
@@ -133,6 +144,7 @@ def test_hash_is_deterministic_for_equal_parameters() -> None:
 
 
 def test_hash_spreads_distinct_inputs_of_rfc_group() -> None:
+    """Fifty distinct group elements give fifty distinct exponents."""
     parameters = ffdhe2048()
 
     values = [pow(2, exponent, parameters.prime) for exponent in range(1, 51)]

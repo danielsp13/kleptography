@@ -1,4 +1,9 @@
-"""
+"""Tests for ``run_channel``, a sequence of sessions.
+
+They check the numbering of sessions, fresh keys and session keys for each
+one, the transcript of the whole channel, that the device's public keys
+pass the same validation as honest ones, and the rejected inputs.
+
 Toy group p = 23, g = 2, q = 11. Honest private keys are fixed by patching the
 honest generator; the device's later keys come from the SETUP vectors of
 ``test_setup_construction.py`` (c1 = 6, t = 0 gives c2 = 4).
@@ -41,11 +46,13 @@ def toy_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
 @pytest.fixture
 def configuration(parameters: DiffieHellmanParameters) -> YoungYungConfiguration:
+    """Return the test-vector configuration with the readable toy H."""
     return YoungYungConfiguration(
         parameters=parameters,
         attacker_public_key=8,
@@ -57,6 +64,7 @@ def configuration(parameters: DiffieHellmanParameters) -> YoungYungConfiguration
 
 
 def fix_private_keys(monkeypatch: pytest.MonkeyPatch, *keys: int) -> None:
+    """Make honest key generation return ``keys`` in order."""
     sequence: Iterator[int] = iter(keys)
 
     def next_key(self: DiffieHellmanParticipant) -> int:

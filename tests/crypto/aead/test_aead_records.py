@@ -1,3 +1,10 @@
+"""Tests for ``EncryptedMessage``, the nonce, ciphertext and tag of a message.
+
+They check the 96-bit nonce and 128-bit tag sizes, that the fields are kept
+unchanged and immutable, and that a nonce or tag of the wrong size or type
+is rejected.
+"""
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError

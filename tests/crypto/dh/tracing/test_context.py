@@ -1,3 +1,9 @@
+"""Tests for ``ProtocolExecutionContext``, the observer that records a timeline.
+
+They check that events are numbered from 1 in order, that their data is
+copied, and that the timeline is exposed as an independent immutable tuple.
+"""
+
 from types import MappingProxyType
 
 from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
@@ -9,18 +15,21 @@ from kleptography.crypto.dh.tracing.observer import OperationObserver
 
 
 def test_context_implements_operation_observer() -> None:
+    """The context is an OperationObserver."""
     context = ProtocolExecutionContext()
 
     assert isinstance(context, OperationObserver)
 
 
 def test_context_starts_empty() -> None:
+    """A new context has no events."""
     context = ProtocolExecutionContext()
 
     assert context.events == ()
 
 
 def test_observe_creates_protocol_event() -> None:
+    """Observing an operation records it as a ProtocolEvent."""
     context = ProtocolExecutionContext()
 
     context.observe(
@@ -40,6 +49,7 @@ def test_observe_creates_protocol_event() -> None:
 
 
 def test_observe_assigns_incremental_sequences() -> None:
+    """Sequence numbers start at 1 and increase by one."""
     context = ProtocolExecutionContext()
 
     context.observe(
@@ -59,6 +69,7 @@ def test_observe_assigns_incremental_sequences() -> None:
 
 
 def test_observe_preserves_order() -> None:
+    """Events are kept in the order they were observed."""
     context = ProtocolExecutionContext()
 
     context.observe(
@@ -94,6 +105,7 @@ def test_observe_preserves_order() -> None:
 
 
 def test_observe_without_data_creates_empty_mapping() -> None:
+    """An operation without data gets an empty mapping."""
     context = ProtocolExecutionContext()
 
     context.observe(
@@ -106,6 +118,7 @@ def test_observe_without_data_creates_empty_mapping() -> None:
 
 
 def test_observe_copies_input_data() -> None:
+    """Later changes to the input data do not affect the event."""
     context = ProtocolExecutionContext()
     data = {"public_key": 18}
 
@@ -121,6 +134,7 @@ def test_observe_copies_input_data() -> None:
 
 
 def test_events_returns_tuple() -> None:
+    """The timeline is returned as a tuple."""
     context = ProtocolExecutionContext()
 
     context.observe(
@@ -132,6 +146,7 @@ def test_events_returns_tuple() -> None:
 
 
 def test_events_snapshot_is_independent() -> None:
+    """A snapshot does not change when more events are recorded."""
     context = ProtocolExecutionContext()
 
     context.observe(

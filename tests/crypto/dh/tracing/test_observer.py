@@ -1,3 +1,9 @@
+"""Tests for ``OperationObserver``, the interface the protocol reports to.
+
+They check that it is abstract, that a subclass must implement ``observe``,
+and that a concrete observer accepts events with and without data.
+"""
+
 from __future__ import annotations
 
 from typing import Mapping
@@ -9,6 +15,8 @@ from kleptography.crypto.dh.tracing.observer import OperationObserver
 
 
 class TestObserver(OperationObserver):
+    """A minimal concrete observer that ignores every event."""
+
     def observe(
         self,
         event_type: ProtocolEventType,
@@ -16,10 +24,12 @@ class TestObserver(OperationObserver):
         actor: Actor,
         data: Mapping[str, object] | None = None,
     ) -> None:
-        pass
+        """Ignore the event."""
 
 
 def test_operation_observer_observe_raises_not_implemented_error() -> None:
+    """The base implementation of observe raises NotImplementedError."""
+
     class ConcreteObserver(OperationObserver):
         def observe(
             self,
@@ -45,17 +55,21 @@ def test_operation_observer_observe_raises_not_implemented_error() -> None:
 
 
 def test_operation_observer_is_abstract() -> None:
+    """The interface cannot be instantiated."""
     with pytest.raises(TypeError):
         OperationObserver()
 
 
 def test_operation_observer_can_be_implemented() -> None:
+    """A subclass that implements observe can be instantiated."""
     observer = TestObserver()
 
     assert isinstance(observer, OperationObserver)
 
 
 def test_operation_observer_requires_observe_implementation() -> None:
+    """A subclass without observe cannot be instantiated."""
+
     class IncompleteObserver(OperationObserver):
         pass
 
@@ -64,6 +78,7 @@ def test_operation_observer_requires_observe_implementation() -> None:
 
 
 def test_operation_observer_observe_accepts_event() -> None:
+    """A concrete observer accepts an event with data."""
     observer = TestObserver()
 
     result = observer.observe(
@@ -76,6 +91,7 @@ def test_operation_observer_observe_accepts_event() -> None:
 
 
 def test_operation_observer_observe_accepts_event_without_data() -> None:
+    """A concrete observer accepts an event without data."""
     observer = TestObserver()
 
     result = observer.observe(

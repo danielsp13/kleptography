@@ -1,3 +1,10 @@
+"""Tests for the Jinja2 template loader.
+
+They check that templates are read as UTF-8 from the templates directory,
+rendered with their context (variables, conditionals, loops, escaping),
+and that read and syntax errors propagate.
+"""
+
 from pathlib import Path
 from unittest.mock import patch
 
@@ -5,6 +12,7 @@ from kleptography.app.html.loader import render_template
 
 
 def test_render_template_reads_template_with_utf8() -> None:
+    """Templates are read as UTF-8 and rendered."""
     template_name = "page.html"
 
     with patch(
@@ -22,6 +30,7 @@ def test_render_template_reads_template_with_utf8() -> None:
 
 
 def test_render_template_resolves_template_path() -> None:
+    """The template is read from the templates directory."""
     template_name = "index.html"
 
     with patch(
@@ -40,6 +49,7 @@ def test_render_template_resolves_template_path() -> None:
 
 
 def test_render_template_with_context() -> None:
+    """Context variables are substituted."""
     with patch(
         "kleptography.app.html.loader.Path.read_text",
         return_value=("<h1>{{ title }}</h1><p>{{ content }}</p>"),
@@ -54,6 +64,7 @@ def test_render_template_with_context() -> None:
 
 
 def test_render_template_with_multiple_context_values() -> None:
+    """Several values of any type are substituted."""
     with patch(
         "kleptography.app.html.loader.Path.read_text",
         return_value="{{ first }} {{ second }} {{ number }}",
@@ -69,6 +80,7 @@ def test_render_template_with_multiple_context_values() -> None:
 
 
 def test_render_template_without_context() -> None:
+    """A template without variables renders unchanged."""
     with patch(
         "kleptography.app.html.loader.Path.read_text",
         return_value="Static content",
@@ -79,6 +91,7 @@ def test_render_template_without_context() -> None:
 
 
 def test_render_template_renders_jinja_conditionals() -> None:
+    """Jinja2 conditionals are evaluated."""
     template = """
     {% if enabled %}
     Enabled
@@ -98,6 +111,7 @@ def test_render_template_renders_jinja_conditionals() -> None:
 
 
 def test_render_template_renders_jinja_loops() -> None:
+    """Jinja2 loops are evaluated."""
     template = "{% for item in items %}<li>{{ item }}</li>{% endfor %}"
 
     with patch(
@@ -113,6 +127,7 @@ def test_render_template_renders_jinja_loops() -> None:
 
 
 def test_render_template_escapes_html_by_default() -> None:
+    """HTML in values is inserted unescaped (autoescape is off)."""
     with patch(
         "kleptography.app.html.loader.Path.read_text",
         return_value="{{ value }}",
@@ -126,6 +141,7 @@ def test_render_template_escapes_html_by_default() -> None:
 
 
 def test_render_template_preserves_plain_text() -> None:
+    """Plain text, newlines included, is kept as is."""
     content = "Hello\nWorld\n\nKleptography"
 
     with patch(
@@ -138,6 +154,7 @@ def test_render_template_preserves_plain_text() -> None:
 
 
 def test_render_template_with_empty_template() -> None:
+    """An empty template renders an empty string."""
     with patch(
         "kleptography.app.html.loader.Path.read_text",
         return_value="",
@@ -148,6 +165,7 @@ def test_render_template_with_empty_template() -> None:
 
 
 def test_render_template_with_none_context_value() -> None:
+    """None renders as "None"."""
     with patch(
         "kleptography.app.html.loader.Path.read_text",
         return_value="{{ value }}",
@@ -158,6 +176,7 @@ def test_render_template_with_none_context_value() -> None:
 
 
 def test_render_template_propagates_file_read_error() -> None:
+    """A missing template raises FileNotFoundError."""
     error = FileNotFoundError("template not found")
 
     with patch(
@@ -173,6 +192,7 @@ def test_render_template_propagates_file_read_error() -> None:
 
 
 def test_render_template_propagates_template_syntax_error() -> None:
+    """Invalid Jinja2 syntax raises TemplateSyntaxError."""
     from jinja2 import TemplateSyntaxError
 
     with patch(
@@ -188,6 +208,7 @@ def test_render_template_propagates_template_syntax_error() -> None:
 
 
 def test_render_template_uses_template_name_relative_to_templates_dir() -> None:
+    """Nested names are resolved inside the templates directory."""
     template_name = "nested/page.html"
 
     with patch(
@@ -205,6 +226,7 @@ def test_render_template_uses_template_name_relative_to_templates_dir() -> None:
 
 
 def test_templates_dir_is_path() -> None:
+    """The templates directory is a Path named "templates"."""
     from kleptography.app.html import loader
 
     assert isinstance(loader._TEMPLATES_DIR, Path)

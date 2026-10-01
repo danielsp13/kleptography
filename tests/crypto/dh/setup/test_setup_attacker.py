@@ -1,4 +1,9 @@
-"""
+"""Tests for ``YoungYungAttacker``, who holds the trapdoor X.
+
+They check the key pair, generated configurations, the recovery of c2 and
+of the second shared secret with all its intermediate values, an
+end-to-end run with random parameters, and every rejected input.
+
 Test vectors: see ``test_setup_construction.py``.
 
 Toy group p = 23, g = 2, q = 11; X = 3, Y = 8, a = 2, b = 2, W = 3,
@@ -39,11 +44,13 @@ def toy_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
 @pytest.fixture
 def attacker(parameters: DiffieHellmanParameters) -> YoungYungAttacker:
+    """Return the attacker with X = 3 (Y = 8)."""
     return YoungYungAttacker(parameters, 3)
 
 
@@ -51,6 +58,7 @@ def build_configuration(
     parameters: DiffieHellmanParameters,
     attacker_public_key: int = 8,
 ) -> YoungYungConfiguration:
+    """Return the test-vector configuration, embedding ``attacker_public_key``."""
     return YoungYungConfiguration(
         parameters=parameters,
         attacker_public_key=attacker_public_key,
@@ -63,10 +71,12 @@ def build_configuration(
 
 @pytest.fixture
 def configuration(parameters: DiffieHellmanParameters) -> YoungYungConfiguration:
+    """Return the test-vector configuration of the toy group."""
     return build_configuration(parameters)
 
 
 def test_attacker_public_key(attacker: YoungYungAttacker) -> None:
+    """The attacker's public key is Y = g^X mod p."""
     assert attacker.private_key == 3
     assert attacker.public_key == 8
 
@@ -76,20 +86,24 @@ def test_attacker_rejects_invalid_private_key(
     parameters: DiffieHellmanParameters,
     private_key: int,
 ) -> None:
+    """A private key outside [1, q - 1] is rejected."""
     with pytest.raises(InvalidPrivateKey):
         YoungYungAttacker(parameters, private_key)
 
 
 def test_attacker_repr_hides_private_key(attacker: YoungYungAttacker) -> None:
+    """The private key X does not leak through repr."""
     assert "private_key" not in repr(attacker)
 
 
 def test_attacker_is_frozen(attacker: YoungYungAttacker) -> None:
+    """The attacker cannot be modified."""
     with pytest.raises(FrozenInstanceError):
         attacker.private_key = 4  # ty: ignore[invalid-assignment]
 
 
 def test_generate_attacker() -> None:
+    """A generated attacker has a valid, random key pair."""
     parameters = DiffieHellmanParameters.generate_toy(bits=32)
 
     attacker = YoungYungAttacker.generate(parameters)
@@ -143,6 +157,7 @@ def test_recover_private_key_rejects_invalid_public_keys(
     first_public_key: int,
     second_public_key: int,
 ) -> None:
+    """Invalid public keys from the device are rejected."""
     with pytest.raises(InvalidPublicKey):
         attacker.recover_private_key(
             first_public_key=first_public_key,
@@ -176,6 +191,7 @@ def test_recover_shared_secret_matches_test_vector(
     second_public_key: int,
     expected_secret: int,
 ) -> None:
+    """The recovered shared secret matches the test vector."""
     shared_secret = attacker.recover_shared_secret(
         first_public_key=18,
         second_public_key=second_public_key,
@@ -190,6 +206,7 @@ def test_recover_shared_secret_rejects_invalid_peer_key(
     attacker: YoungYungAttacker,
     configuration: YoungYungConfiguration,
 ) -> None:
+    """An invalid public key from the peer is rejected."""
     with pytest.raises(InvalidPublicKey):
         attacker.recover_shared_secret(
             first_public_key=18,
@@ -212,8 +229,7 @@ def sent_public_keys(context: ProtocolExecutionContext) -> dict[Actor, int]:
 
 @pytest.mark.parametrize("repetition", range(10))
 def test_attacker_recovers_second_exchange_from_channel(repetition: int) -> None:
-    """
-    End to end with the default H: the attacker only reads the channel.
+    """End to end with the default H: the attacker only reads the channel.
 
     Ten repetitions exercise both values of t with high probability.
     """
@@ -258,8 +274,7 @@ def test_attacker_recovers_second_exchange_from_channel(repetition: int) -> None
 
 
 def test_attacker_cannot_recover_from_honest_participant() -> None:
-    """
-    Without the SETUP, consecutive exponents are independent.
+    """Without the SETUP, consecutive exponents are independent.
 
     The recovery only succeeds by chance (probability about 2 / q).
     """
@@ -322,6 +337,7 @@ def test_attacker_public_key_for_every_private_key(
     parameters: DiffieHellmanParameters,
     private_key: int,
 ) -> None:
+    """Y = g^X mod p for every X of the toy group."""
     attacker = YoungYungAttacker(parameters, private_key)
 
     assert attacker.public_key == pow(2, private_key, 23)
@@ -329,6 +345,7 @@ def test_attacker_public_key_for_every_private_key(
 
 @pytest.fixture
 def larger_parameters() -> DiffieHellmanParameters:
+    """Return the group p = 47, g = 2, q = 23."""
     return DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
 
 
@@ -337,6 +354,7 @@ def test_attacker_validates_private_key_in_its_own_group(
     larger_parameters: DiffieHellmanParameters,
     private_key: int,
 ) -> None:
+    """The private key range is that of the attacker's group."""
     attacker = YoungYungAttacker(larger_parameters, private_key)
 
     assert attacker.public_key == pow(2, private_key, 47)
@@ -345,6 +363,7 @@ def test_attacker_validates_private_key_in_its_own_group(
 def test_attacker_rejects_private_key_equal_to_its_group_order(
     larger_parameters: DiffieHellmanParameters,
 ) -> None:
+    """X = q is rejected in a larger group."""
     with pytest.raises(InvalidPrivateKey):
         YoungYungAttacker(larger_parameters, 23)
 
@@ -352,6 +371,7 @@ def test_attacker_rejects_private_key_equal_to_its_group_order(
 def test_generate_attacker_returns_valid_attacker(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Generated attackers have valid and varied private keys."""
     private_keys = set()
     for _ in range(64):
         attacker = YoungYungAttacker.generate(parameters)
@@ -442,6 +462,7 @@ def test_recover_shared_secret_rejects_invalid_device_keys(
     first_public_key: int,
     second_public_key: int,
 ) -> None:
+    """Invalid public keys from the device are rejected."""
     with pytest.raises(InvalidPublicKey):
         attacker.recover_shared_secret(
             first_public_key=first_public_key,
@@ -455,6 +476,7 @@ def test_recover_shared_secret_rejects_foreign_configuration(
     attacker: YoungYungAttacker,
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """A configuration with another attacker's Y is rejected."""
     foreign_configuration = build_configuration(parameters, attacker_public_key=4)
 
     with pytest.raises(InvalidSetupConfiguration):
@@ -470,6 +492,7 @@ def test_recover_shared_secret_fails_for_unrelated_output(
     attacker: YoungYungAttacker,
     configuration: YoungYungConfiguration,
 ) -> None:
+    """A second key not derived by the SETUP raises SetupRecoveryError."""
     with pytest.raises(SetupRecoveryError):
         attacker.recover_shared_secret(
             first_public_key=18,
@@ -545,6 +568,7 @@ def test_recover_records_intermediate_values(
     expected_bit: int,
     expected_key: int,
 ) -> None:
+    """The recovery exposes r, both candidates, t and c2."""
     recovery = attacker.recover(
         first_public_key=18,
         second_public_key=second_public_key,
@@ -567,6 +591,7 @@ def test_recover_raises_like_recover_private_key(
     configuration: YoungYungConfiguration,
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """The method recover raises the same errors as recover_private_key."""
     with pytest.raises(SetupRecoveryError):
         attacker.recover(
             first_public_key=18, second_public_key=2, configuration=configuration
@@ -586,6 +611,7 @@ def test_recover_raises_like_recover_private_key(
 def test_recover_rejects_configuration_of_another_group(
     attacker: YoungYungAttacker,
 ) -> None:
+    """A configuration for another group is rejected."""
     other_parameters = DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
     other_configuration = build_configuration(other_parameters, attacker_public_key=8)
 
@@ -636,6 +662,7 @@ def test_generate_configuration_embeds_attacker_key(
     attacker: YoungYungAttacker,
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Generated configurations embed Y and valid constants."""
     for _ in range(64):
         configuration = attacker.generate_configuration()
 
@@ -670,12 +697,14 @@ def test_generate_configuration_skips_degenerate_multiplier(
 def test_generate_configuration_uses_given_hash(
     attacker: YoungYungAttacker,
 ) -> None:
+    """A generated configuration uses the given hash function."""
     configuration = attacker.generate_configuration(hash_function=toy_hash)
 
     assert configuration.hash_function is toy_hash
 
 
 def test_generate_configuration_rejects_tiny_group() -> None:
+    """A group with q < 3 cannot hold a SETUP."""
     parameters = DiffieHellmanParameters(prime=5, generator=4, subgroup_order=2)
     attacker = YoungYungAttacker(parameters, 1)
 
@@ -685,6 +714,7 @@ def test_generate_configuration_rejects_tiny_group() -> None:
 
 @pytest.mark.parametrize("repetition", range(5))
 def test_generated_configuration_works_end_to_end(repetition: int) -> None:
+    """A generated backdoor recovers the second secret of a real run."""
     parameters = DiffieHellmanParameters.generate_toy(bits=32)
     attacker = YoungYungAttacker.generate(parameters)
     configuration = attacker.generate_configuration()
@@ -732,6 +762,7 @@ def test_compute_candidates_rejects_invalid_inputs(
     configuration: YoungYungConfiguration,
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Invalid m1 and foreign configurations are rejected."""
     with pytest.raises(InvalidPublicKey):
         attacker.compute_candidates(first_public_key=5, configuration=configuration)
     with pytest.raises(InvalidSetupConfiguration):
@@ -752,6 +783,7 @@ def test_match_candidates_keeps_the_matching_key(
     expected_bit: int,
     expected_key: int,
 ) -> None:
+    """Matching keeps the candidate that reproduces m2."""
     candidates = attacker.compute_candidates(
         first_public_key=18, configuration=configuration
     )
@@ -790,6 +822,7 @@ def test_candidates_are_frozen(
     attacker: YoungYungAttacker,
     configuration: YoungYungConfiguration,
 ) -> None:
+    """The candidates cannot be modified."""
     candidates = attacker.compute_candidates(
         first_public_key=18, configuration=configuration
     )

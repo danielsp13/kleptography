@@ -1,4 +1,10 @@
-"""
+"""Tests for ``YoungYungDiffieHellmanParticipant``, the compromised device.
+
+They check that its first key is honest and every later one is the SETUP
+derivation of the previous one, that it works in the honest protocol in
+either role, that the derivations of the chain are exposed but hidden from
+repr, and that a configuration of another group is rejected.
+
 Test vectors: see ``test_setup_construction.py``.
 
 Toy group p = 23, g = 2, q = 11; Y = 8, a = 2, b = 2, W = 3,
@@ -37,11 +43,13 @@ def toy_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
 @pytest.fixture
 def configuration(parameters: DiffieHellmanParameters) -> YoungYungConfiguration:
+    """Return the test-vector configuration with the readable toy H."""
     return YoungYungConfiguration(
         parameters=parameters,
         attacker_public_key=8,
@@ -57,10 +65,12 @@ def device(
     parameters: DiffieHellmanParameters,
     configuration: YoungYungConfiguration,
 ) -> YoungYungDiffieHellmanParticipant:
+    """Return a device with the test-vector configuration."""
     return YoungYungDiffieHellmanParticipant(parameters, configuration)
 
 
 def force_correction_bit(monkeypatch: pytest.MonkeyPatch, correction_bit: int) -> None:
+    """Make every device sample the given correction bit t."""
     monkeypatch.setattr(
         YoungYungDiffieHellmanParticipant,
         "_sample_correction_bit",
@@ -79,6 +89,7 @@ def test_device_initial_state(
     device: YoungYungDiffieHellmanParticipant,
     configuration: YoungYungConfiguration,
 ) -> None:
+    """A new device holds its configuration and no key pair."""
     assert device.configuration is configuration
     assert device.private_key is None
     assert device.public_key is None
@@ -88,6 +99,7 @@ def test_device_initial_state(
 def test_device_rejects_configuration_for_another_group(
     configuration: YoungYungConfiguration,
 ) -> None:
+    """A configuration for another group is rejected."""
     other_parameters = DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
 
     with pytest.raises(DiffieHellmanParametersMismatch):
@@ -97,6 +109,7 @@ def test_device_rejects_configuration_for_another_group(
 def test_device_accepts_equal_but_distinct_parameters(
     configuration: YoungYungConfiguration,
 ) -> None:
+    """Equal parameters in distinct objects are accepted."""
     equal_parameters = DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
     device = YoungYungDiffieHellmanParticipant(equal_parameters, configuration)
@@ -107,6 +120,7 @@ def test_device_accepts_equal_but_distinct_parameters(
 def test_device_repr_hides_private_key(
     device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """The private exponent does not leak through repr."""
     device.load_private_key(6)
 
     assert "_private_key" not in repr(device)
@@ -140,6 +154,7 @@ def test_second_key_is_derived_from_stored_exponent(
     expected_private_key: int,
     expected_public_key: int,
 ) -> None:
+    """The next key is the SETUP derivation of the stored one."""
     force_correction_bit(monkeypatch, correction_bit)
     device.load_private_key(6)
 
@@ -153,6 +168,7 @@ def test_two_generations_follow_the_setup(
     device: YoungYungDiffieHellmanParticipant,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """An honest c1 is followed by the SETUP derivation of c2."""
     monkeypatch.setattr(
         DiffieHellmanParticipant,
         "_generate_private_key",
@@ -172,6 +188,7 @@ def test_two_generations_follow_the_setup(
 def test_load_private_key_is_still_validated(
     device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """Loading an invalid exponent is still rejected."""
     with pytest.raises(InvalidPrivateKey):
         device.load_private_key(0)
 
@@ -266,7 +283,7 @@ def test_first_generation_does_not_sample_correction_bit(
     device: YoungYungDiffieHellmanParticipant,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """t only exists in the second exchange."""
+    """The bit t only exists in the second exchange."""
 
     def unexpected(self: YoungYungDiffieHellmanParticipant) -> int:
         raise AssertionError("t sampled in the first exchange")
@@ -302,6 +319,7 @@ def test_second_generation_samples_correction_bit_once(
     device: YoungYungDiffieHellmanParticipant,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Each SETUP derivation samples t exactly once."""
     calls: list[int] = []
 
     def counting(self: YoungYungDiffieHellmanParticipant) -> int:
@@ -323,6 +341,7 @@ def test_device_uses_configured_hash(
     parameters: DiffieHellmanParameters,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """The device derives c2 with the configured H."""
     received: list[int] = []
 
     def recording_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
@@ -355,6 +374,7 @@ def test_second_key_matches_reference_for_every_stored_exponent(
     monkeypatch: pytest.MonkeyPatch,
     correction_bit: int,
 ) -> None:
+    """c2 matches the reference for every c1 of the toy group."""
     force_correction_bit(monkeypatch, correction_bit)
 
     for previous_private_key in range(1, 11):
@@ -375,6 +395,7 @@ def test_second_key_matches_reference_with_default_hash(
     monkeypatch: pytest.MonkeyPatch,
     correction_bit: int,
 ) -> None:
+    """c2 matches the reference with the real H."""
     force_correction_bit(monkeypatch, correction_bit)
 
     toy_device.generate_keypair()
@@ -391,6 +412,7 @@ def test_second_key_matches_reference_with_default_hash(
 def test_device_works_as_second_participant(
     toy_device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """The device also works when it plays Bob."""
     parameters = toy_device.parameters
 
     first = perform_key_exchange(DiffieHellmanParticipant(parameters), toy_device)
@@ -435,6 +457,7 @@ def test_device_timeline_looks_like_honest_timeline(
 def test_device_in_exchange_with_other_group_is_rejected(
     toy_device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """An exchange with another group is rejected before any key."""
     other_parameters = DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
 
     with pytest.raises(DiffieHellmanParametersMismatch):
@@ -446,6 +469,7 @@ def test_device_in_exchange_with_other_group_is_rejected(
 def test_device_mismatch_is_raised_before_any_key_exists(
     configuration: YoungYungConfiguration,
 ) -> None:
+    """The group mismatch is a ValueError raised on construction."""
     other_parameters = DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
 
     with pytest.raises(ValueError):
@@ -453,6 +477,7 @@ def test_device_mismatch_is_raised_before_any_key_exists(
 
 
 def test_device_is_slotted(device: YoungYungDiffieHellmanParticipant) -> None:
+    """The device has no instance dictionary."""
     assert not hasattr(device, "__dict__")
 
 
@@ -474,6 +499,7 @@ def test_device_public_key_is_consistent_after_each_generation(
 def test_last_derivation_is_empty_until_setup_runs(
     device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """There is no derivation until the second generation."""
     assert device.last_derivation is None
 
     device.generate_keypair()
@@ -492,6 +518,7 @@ def test_last_derivation_records_setup_internals(
     expected_z: int,
     expected_key: int,
 ) -> None:
+    """The last derivation exposes c1, t, z and c2."""
     force_correction_bit(monkeypatch, correction_bit)
     device.load_private_key(6)
 
@@ -509,6 +536,7 @@ def test_last_derivation_records_setup_internals(
 def test_load_private_key_clears_last_derivation(
     device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """Loading a key forgets the last derivation."""
     device.load_private_key(6)
     device.generate_keypair()
     assert device.last_derivation is not None
@@ -521,6 +549,7 @@ def test_load_private_key_clears_last_derivation(
 def test_repr_hides_last_derivation(
     device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """The derivations do not leak through repr."""
     device.load_private_key(6)
     device.generate_keypair()
 
@@ -546,6 +575,7 @@ def test_last_derivation_follows_the_chain(
 def test_derivations_are_empty_until_setup_runs(
     device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """The chain is empty until the second generation."""
     assert device.derivations == ()
 
     device.generate_keypair()
@@ -575,6 +605,7 @@ def test_derivations_record_the_whole_chain(
 def test_derivations_chain_consecutive_exponents(
     toy_device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """Each derivation starts from the previous exponent."""
     toy_device.generate_keypair()
     private_keys = [toy_device.private_key]
 
@@ -590,6 +621,7 @@ def test_derivations_chain_consecutive_exponents(
 def test_load_private_key_starts_a_new_chain(
     device: YoungYungDiffieHellmanParticipant,
 ) -> None:
+    """Loading a key empties the chain."""
     device.load_private_key(6)
     device.generate_keypair()
     device.generate_keypair()

@@ -1,5 +1,8 @@
-"""
-Tests for modular arithmetic utilities.
+"""Tests for the modular arithmetic utilities.
+
+They check ``mod_pow``, ``mod_inverse`` and ``is_coprime`` on regular and
+negative inputs, and the rejection of invalid moduli and of values without
+an inverse.
 """
 
 from __future__ import annotations

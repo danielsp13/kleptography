@@ -1,3 +1,10 @@
+"""Tests for ``YoungYungConfiguration``, the constants embedded in the device.
+
+They check that it stores Y, a, b, W and H, defaults to the real H, is a
+frozen, hashable, slotted and keyword-only dataclass, and rejects an
+invalid Y, a = 0 (mod q), an even W and W = 0 (mod q), with value errors.
+"""
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
@@ -18,6 +25,7 @@ def toy_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
@@ -29,6 +37,7 @@ def build_configuration(
     offset_b: int = 2,
     correction_w: int = 3,
 ) -> YoungYungConfiguration:
+    """Return a configuration of the toy group, with the test-vector defaults."""
     return YoungYungConfiguration(
         parameters=parameters,
         attacker_public_key=attacker_public_key,
@@ -42,6 +51,7 @@ def build_configuration(
 def test_configuration_stores_constants(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """The configuration stores its group and constants."""
     configuration = build_configuration(parameters)
 
     assert configuration.parameters is parameters
@@ -55,6 +65,7 @@ def test_configuration_stores_constants(
 def test_configuration_uses_hash_to_exponent_by_default(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """H defaults to hash_to_exponent."""
     configuration = YoungYungConfiguration(
         parameters=parameters,
         attacker_public_key=8,
@@ -69,6 +80,7 @@ def test_configuration_uses_hash_to_exponent_by_default(
 def test_configuration_is_frozen_and_hashable(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """The configuration is immutable, comparable and hashable."""
     configuration = build_configuration(parameters)
 
     with pytest.raises(FrozenInstanceError):
@@ -81,6 +93,7 @@ def test_configuration_is_frozen_and_hashable(
 def test_configuration_is_keyword_only(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """The fields cannot be passed by position."""
     with pytest.raises(TypeError):
         YoungYungConfiguration(parameters, 8, 2, 2, 3)  # ty: ignore[missing-argument, too-many-positional-arguments]
 
@@ -130,6 +143,7 @@ def test_configuration_accepts_odd_correction(
     parameters: DiffieHellmanParameters,
     correction_w: int,
 ) -> None:
+    """An odd W is accepted."""
     configuration = build_configuration(parameters, correction_w=correction_w)
 
     assert configuration.correction_w == correction_w
@@ -140,6 +154,7 @@ def test_configuration_accepts_odd_correction(
 
 @pytest.fixture
 def larger_parameters() -> DiffieHellmanParameters:
+    """Return the group p = 47, g = 2, q = 23."""
     return DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
 
 
@@ -171,6 +186,7 @@ def test_configuration_accepts_multiplier_not_zero_modulo_q(
     parameters: DiffieHellmanParameters,
     multiplier_a: int,
 ) -> None:
+    """Any a that is nonzero modulo q is accepted."""
     configuration = build_configuration(parameters, multiplier_a=multiplier_a)
 
     assert configuration.multiplier_a == multiplier_a
@@ -179,7 +195,7 @@ def test_configuration_accepts_multiplier_not_zero_modulo_q(
 def test_configuration_multiplier_error_is_not_a_public_key_error(
     parameters: DiffieHellmanParameters,
 ) -> None:
-    """a is a SETUP constant, not a public value."""
+    """The constant a is a SETUP constant, not a public value."""
     with pytest.raises(InvalidSetupConfiguration) as error:
         build_configuration(parameters, multiplier_a=0)
 
@@ -202,6 +218,7 @@ def test_configuration_accepts_other_odd_corrections(
     parameters: DiffieHellmanParameters,
     correction_w: int,
 ) -> None:
+    """Other odd values of W are accepted."""
     configuration = build_configuration(parameters, correction_w=correction_w)
 
     assert configuration.correction_w == correction_w
@@ -212,6 +229,7 @@ def test_configuration_rejects_negative_correction_zero_modulo_q(
     parameters: DiffieHellmanParameters,
     correction_w: int,
 ) -> None:
+    """A negative W that is zero modulo q is rejected."""
     with pytest.raises(InvalidSetupConfiguration):
         build_configuration(parameters, correction_w=correction_w)
 
@@ -219,11 +237,13 @@ def test_configuration_rejects_negative_correction_zero_modulo_q(
 def test_configuration_errors_are_value_errors(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Configuration errors are also ValueErrors."""
     with pytest.raises(ValueError):
         build_configuration(parameters, correction_w=2)
 
 
 def test_configuration_is_slotted(parameters: DiffieHellmanParameters) -> None:
+    """The configuration has no instance dictionary."""
     configuration = build_configuration(parameters)
 
     assert not hasattr(configuration, "__dict__")
@@ -232,6 +252,7 @@ def test_configuration_is_slotted(parameters: DiffieHellmanParameters) -> None:
 def test_configurations_with_different_hash_are_not_equal(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Configurations with different H are not equal."""
     configuration = build_configuration(parameters)
     default_hash_configuration = YoungYungConfiguration(
         parameters=parameters,

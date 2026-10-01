@@ -1,4 +1,5 @@
-"""
+"""Isolation tests for the encrypted channel.
+
 The channel is unaware of the SETUP: it never imports kleptographic code.
 """
 
@@ -25,6 +26,7 @@ ALLOWED_PREFIXES = (
 
 
 def _project_imports(path: Path) -> list[str]:
+    """Return the lines of a module that import project code."""
     return [
         line
         for line in path.read_text(encoding="utf-8").splitlines()
@@ -33,6 +35,7 @@ def _project_imports(path: Path) -> list[str]:
 
 
 def test_channel_modules_are_found() -> None:
+    """The scan covers every channel module."""
     names = {path.name for path in CHANNEL_MODULES}
 
     assert {"exceptions.py", "records.py", "session.py", "protocol.py"} <= names
@@ -44,6 +47,7 @@ def test_channel_modules_are_found() -> None:
     ids=[str(path.relative_to(CHANNEL_ROOT)) for path in CHANNEL_MODULES],
 )
 def test_channel_module_imports_only_allowed_packages(path: Path) -> None:
+    """Channel modules import only channel, DH, KDF and AEAD."""
     imports = _project_imports(path)
 
     assert all(line.split()[1].startswith(ALLOWED_PREFIXES) for line in imports)
@@ -55,6 +59,7 @@ def test_channel_module_imports_only_allowed_packages(path: Path) -> None:
     ids=[str(path.relative_to(CHANNEL_ROOT)) for path in CHANNEL_MODULES],
 )
 def test_channel_module_never_imports_setup(path: Path) -> None:
+    """Channel modules never import kleptographic code."""
     imports = _project_imports(path)
 
     assert not any("kleptography.crypto.dh.setup" in line for line in imports)

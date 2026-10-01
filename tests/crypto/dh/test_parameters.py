@@ -1,5 +1,8 @@
-"""
-Tests for Diffie-Hellman parameter generation and construction.
+"""Tests for ``DiffieHellmanParameters``, the public parameters of a group.
+
+They check toy generation (bit length, safe prime, generator of order q),
+construction from a standard, the bit and byte lengths, and that the
+parameters are immutable and hashable.
 """
 
 from __future__ import annotations
@@ -36,8 +39,7 @@ def test_generate_toy_has_safe_prime_structure() -> None:
 
 
 def test_generate_toy_generator_has_subgroup_order() -> None:
-    """
-    The generated generator should have exactly the declared subgroup order.
+    """The generated generator should have exactly the declared subgroup order.
 
     For the generated safe prime p = 2q + 1:
 

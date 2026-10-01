@@ -1,3 +1,9 @@
+"""Tests for ``DiffieHellmanExchangeResult``, the outcome of an exchange.
+
+They check that it stores both secrets, reports success only when they
+match, and is immutable.
+"""
+
 from __future__ import annotations
 
 import pytest

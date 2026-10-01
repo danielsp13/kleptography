@@ -1,3 +1,12 @@
+"""Tests for the validation of Diffie-Hellman values.
+
+The validated values are the group parameters, private exponents and public
+values.
+
+They cover valid inputs, the boundary values, and every rejected case with
+its exception type.
+"""
+
 from __future__ import annotations
 
 import pytest

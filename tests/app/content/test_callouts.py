@@ -1,9 +1,17 @@
+"""Tests for ``CalloutComposer``, the HTML callout boxes.
+
+They check the supported types and their validation, the exact HTML of
+every callout, the factory constructors with their default titles, the
+immutability of the dataclass and the shared stylesheet.
+"""
+
 import pytest
 
 from kleptography.app.content.callouts import CalloutComposer
 
 
 def test_types_contains_all_supported_callout_types():
+    """The six callout types are supported."""
     assert CalloutComposer.TYPES == {
         "note",
         "tip",
@@ -19,6 +27,7 @@ def test_types_contains_all_supported_callout_types():
     sorted(CalloutComposer.TYPES),
 )
 def test_valid_callout_types_are_accepted(callout_type):
+    """Every supported type builds a callout with its fields."""
     callout = CalloutComposer(callout_type, "Title", "Content")
 
     assert callout.type == callout_type
@@ -27,6 +36,7 @@ def test_valid_callout_types_are_accepted(callout_type):
 
 
 def test_invalid_callout_type_raises_value_error():
+    """An unknown type raises ValueError listing the valid ones."""
     with pytest.raises(
         ValueError,
         match=(
@@ -38,6 +48,7 @@ def test_invalid_callout_type_raises_value_error():
 
 
 def test_invalid_callout_type_error_message_uses_repr():
+    """The error message shows the repr of the invalid type."""
     with pytest.raises(
         ValueError,
         match=(
@@ -49,6 +60,7 @@ def test_invalid_callout_type_error_message_uses_repr():
 
 
 def test_build_returns_expected_html():
+    """A callout builds the expected HTML."""
     callout = CalloutComposer("note", "My title", "My content")
 
     assert callout.build() == (
@@ -64,6 +76,7 @@ def test_build_returns_expected_html():
     sorted(CalloutComposer.TYPES),
 )
 def test_build_uses_callout_type_in_css_class(callout_type):
+    """The type selects the CSS class of the callout."""
     callout = CalloutComposer(callout_type, "Title", "Content")
 
     assert callout.build() == (
@@ -75,6 +88,7 @@ def test_build_uses_callout_type_in_css_class(callout_type):
 
 
 def test_build_preserves_title_and_content_verbatim():
+    """Title and content are inserted as raw HTML."""
     callout = CalloutComposer(
         "info",
         "<strong>Custom title</strong>",
@@ -105,6 +119,7 @@ def test_factory_methods_use_default_titles(
     expected_type,
     default_title,
 ):
+    """Each factory uses its type and default title."""
     callout = factory("Content")
 
     assert callout == CalloutComposer(
@@ -126,6 +141,7 @@ def test_factory_methods_use_default_titles(
     ],
 )
 def test_factory_methods_accept_custom_titles(factory, expected_type):
+    """Each factory accepts a custom title."""
     callout = factory("Content", title="Custom title")
 
     assert callout.type == expected_type
@@ -134,6 +150,7 @@ def test_factory_methods_accept_custom_titles(factory, expected_type):
 
 
 def test_note_factory_builds_expected_html():
+    """A note callout builds the expected HTML."""
     assert CalloutComposer.note("Body").build() == (
         '<div class="callout callout-note">'
         '<div class="callout-title">Note</div>'
@@ -143,6 +160,7 @@ def test_note_factory_builds_expected_html():
 
 
 def test_tip_factory_builds_expected_html():
+    """A tip callout builds the expected HTML."""
     assert CalloutComposer.tip("Body").build() == (
         '<div class="callout callout-tip">'
         '<div class="callout-title">Tip</div>'
@@ -152,6 +170,7 @@ def test_tip_factory_builds_expected_html():
 
 
 def test_warning_factory_builds_expected_html():
+    """A warning callout builds the expected HTML."""
     assert CalloutComposer.warning("Body").build() == (
         '<div class="callout callout-warning">'
         '<div class="callout-title">Warning</div>'
@@ -161,6 +180,7 @@ def test_warning_factory_builds_expected_html():
 
 
 def test_danger_factory_builds_expected_html():
+    """A danger callout builds the expected HTML."""
     assert CalloutComposer.danger("Body").build() == (
         '<div class="callout callout-danger">'
         '<div class="callout-title">Danger</div>'
@@ -170,6 +190,7 @@ def test_danger_factory_builds_expected_html():
 
 
 def test_info_factory_builds_expected_html():
+    """An info callout builds the expected HTML."""
     assert CalloutComposer.info("Body").build() == (
         '<div class="callout callout-info">'
         '<div class="callout-title">Info</div>'
@@ -179,6 +200,7 @@ def test_info_factory_builds_expected_html():
 
 
 def test_success_factory_builds_expected_html():
+    """A success callout builds the expected HTML."""
     assert CalloutComposer.success("Body").build() == (
         '<div class="callout callout-success">'
         '<div class="callout-title">Success</div>'
@@ -188,6 +210,7 @@ def test_success_factory_builds_expected_html():
 
 
 def test_dataclass_is_frozen():
+    """A callout cannot be modified."""
     callout = CalloutComposer("note", "Title", "Content")
 
     with pytest.raises(AttributeError):
@@ -195,6 +218,7 @@ def test_dataclass_is_frozen():
 
 
 def test_dataclass_equality():
+    """Callouts with the same fields are equal."""
     first = CalloutComposer("info", "Title", "Content")
     second = CalloutComposer("info", "Title", "Content")
 
@@ -202,6 +226,7 @@ def test_dataclass_equality():
 
 
 def test_dataclass_inequality_when_fields_differ():
+    """Callouts with different fields are not equal."""
     first = CalloutComposer("info", "Title", "Content")
     second = CalloutComposer("info", "Other title", "Content")
 
@@ -209,6 +234,7 @@ def test_dataclass_inequality_when_fields_differ():
 
 
 def test_css_returns_expected_stylesheet():
+    """The stylesheet is a style element with the base rules."""
     css = CalloutComposer.css()
 
     assert css.startswith("\n        <style>")
@@ -237,6 +263,7 @@ def test_css_returns_expected_stylesheet():
     sorted(CalloutComposer.TYPES),
 )
 def test_css_contains_styles_for_every_callout_type(callout_type):
+    """The stylesheet styles every callout type and its title."""
     css = CalloutComposer.css()
 
     assert f".callout-{callout_type}" in css
@@ -244,6 +271,7 @@ def test_css_contains_styles_for_every_callout_type(callout_type):
 
 
 def test_css_contains_note_styles():
+    """The stylesheet has the note colors."""
     css = CalloutComposer.css()
 
     assert "border-color: #6b7280;" in css
@@ -252,6 +280,7 @@ def test_css_contains_note_styles():
 
 
 def test_css_contains_tip_styles():
+    """The stylesheet has the tip colors."""
     css = CalloutComposer.css()
 
     assert "border-color: #10b981;" in css
@@ -260,6 +289,7 @@ def test_css_contains_tip_styles():
 
 
 def test_css_contains_warning_styles():
+    """The stylesheet has the warning colors."""
     css = CalloutComposer.css()
 
     assert "border-color: #f59e0b;" in css
@@ -268,6 +298,7 @@ def test_css_contains_warning_styles():
 
 
 def test_css_contains_danger_styles():
+    """The stylesheet has the danger colors."""
     css = CalloutComposer.css()
 
     assert "border-color: #ef4444;" in css
@@ -276,6 +307,7 @@ def test_css_contains_danger_styles():
 
 
 def test_css_contains_info_styles():
+    """The stylesheet has the info colors."""
     css = CalloutComposer.css()
 
     assert "border-color: #3b82f6;" in css
@@ -284,6 +316,7 @@ def test_css_contains_info_styles():
 
 
 def test_css_contains_success_styles():
+    """The stylesheet has the success colors."""
     css = CalloutComposer.css()
 
     assert "border-color: #22c55e;" in css
@@ -292,6 +325,7 @@ def test_css_contains_success_styles():
 
 
 def test_css_is_staticmethod_and_can_be_called_on_class():
+    """The stylesheet is available without an instance."""
     assert isinstance(
         CalloutComposer.__dict__["css"],
         staticmethod,
@@ -300,6 +334,7 @@ def test_css_is_staticmethod_and_can_be_called_on_class():
 
 
 def test_empty_title_and_content_are_supported():
+    """A callout can have an empty title and content."""
     callout = CalloutComposer("note", "", "")
 
     assert callout.build() == (

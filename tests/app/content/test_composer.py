@@ -1,3 +1,10 @@
+"""Tests for ``ContentComposer``, the fluent Markdown builder.
+
+They check the exact Markdown of every block and inline helper, that block
+methods return the composer for chaining, and that blocks are joined with
+blank lines in insertion order.
+"""
+
 import pytest
 
 from kleptography.app.content.callouts import CalloutComposer
@@ -5,6 +12,7 @@ from kleptography.app.content.composer import ContentComposer
 
 
 def test_empty_composer() -> None:
+    """A new composer builds an empty string."""
     composer = ContentComposer()
 
     assert composer.build() == ""
@@ -19,6 +27,7 @@ def test_empty_composer() -> None:
     ],
 )
 def test_headings(method: str, text: str, expected: str) -> None:
+    """Each heading method appends a heading of its level."""
     composer = ContentComposer()
 
     result = getattr(composer, method)(text)
@@ -28,6 +37,7 @@ def test_headings(method: str, text: str, expected: str) -> None:
 
 
 def test_paragraph() -> None:
+    """A paragraph is appended as given."""
     composer = ContentComposer()
 
     result = composer.paragraph("A paragraph.")
@@ -37,6 +47,7 @@ def test_paragraph() -> None:
 
 
 def test_paragraph_with_multiple_parts() -> None:
+    """The parts of a paragraph are joined without separator."""
     composer = ContentComposer()
 
     result = composer.paragraph("Hello, ", "world", "!")
@@ -46,6 +57,7 @@ def test_paragraph_with_multiple_parts() -> None:
 
 
 def test_paragraph_with_no_parts() -> None:
+    """A paragraph without parts is empty."""
     composer = ContentComposer()
 
     result = composer.paragraph()
@@ -55,6 +67,7 @@ def test_paragraph_with_no_parts() -> None:
 
 
 def test_divider() -> None:
+    """A divider is a horizontal rule."""
     composer = ContentComposer()
 
     result = composer.divider()
@@ -64,6 +77,7 @@ def test_divider() -> None:
 
 
 def test_bullet_list() -> None:
+    """Each item becomes a "- " line."""
     composer = ContentComposer()
 
     result = composer.bullet_list(
@@ -79,6 +93,7 @@ def test_bullet_list() -> None:
 
 
 def test_empty_bullet_list() -> None:
+    """An empty bullet list builds nothing."""
     composer = ContentComposer()
 
     result = composer.bullet_list([])
@@ -88,6 +103,7 @@ def test_empty_bullet_list() -> None:
 
 
 def test_bullet_list_with_empty_items() -> None:
+    """Empty items are kept as empty bullets."""
     composer = ContentComposer()
 
     composer.bullet_list(["", "Item", ""])
@@ -96,6 +112,7 @@ def test_bullet_list_with_empty_items() -> None:
 
 
 def test_ordered_list() -> None:
+    """Each item becomes a numbered line."""
     composer = ContentComposer()
 
     result = composer.ordered_list(
@@ -111,6 +128,7 @@ def test_ordered_list() -> None:
 
 
 def test_empty_ordered_list() -> None:
+    """An empty ordered list builds nothing."""
     composer = ContentComposer()
 
     result = composer.ordered_list([])
@@ -120,6 +138,7 @@ def test_empty_ordered_list() -> None:
 
 
 def test_ordered_list_numbers_items_from_one() -> None:
+    """Numbering starts at 1 and follows the items."""
     composer = ContentComposer()
 
     composer.ordered_list(["A", "B", "C", "D"])
@@ -128,6 +147,7 @@ def test_ordered_list_numbers_items_from_one() -> None:
 
 
 def test_quote() -> None:
+    """A quote is prefixed with "> "."""
     composer = ContentComposer()
 
     result = composer.quote("A quoted sentence.")
@@ -137,6 +157,7 @@ def test_quote() -> None:
 
 
 def test_quote_with_multiple_parts() -> None:
+    """The parts of a quote are joined without separator."""
     composer = ContentComposer()
 
     result = composer.quote("Hello, ", "world", "!")
@@ -146,6 +167,7 @@ def test_quote_with_multiple_parts() -> None:
 
 
 def test_quote_with_no_parts() -> None:
+    """A quote without parts is just the prefix."""
     composer = ContentComposer()
 
     result = composer.quote()
@@ -155,6 +177,7 @@ def test_quote_with_no_parts() -> None:
 
 
 def test_image() -> None:
+    """An image uses the Markdown image syntax with its alternative text."""
     composer = ContentComposer()
 
     result = composer.image(
@@ -167,6 +190,7 @@ def test_image() -> None:
 
 
 def test_image_without_alt_text() -> None:
+    """The alternative text defaults to empty."""
     composer = ContentComposer()
 
     result = composer.image("docs/images/kleptofox.png")
@@ -176,6 +200,7 @@ def test_image_without_alt_text() -> None:
 
 
 def test_image_with_empty_alt_text() -> None:
+    """An explicit empty alternative text is allowed."""
     composer = ContentComposer()
 
     composer.image("image.png", alt="")
@@ -184,6 +209,7 @@ def test_image_with_empty_alt_text() -> None:
 
 
 def test_block_with_string() -> None:
+    """A string block is appended verbatim."""
     composer = ContentComposer()
 
     result = composer.block("Some Markdown content.")
@@ -193,6 +219,7 @@ def test_block_with_string() -> None:
 
 
 def test_block_with_callout_composer() -> None:
+    """A callout block is appended as its built HTML."""
     composer = ContentComposer()
     callout = CalloutComposer.note("Some note.")
 
@@ -203,6 +230,7 @@ def test_block_with_callout_composer() -> None:
 
 
 def test_block_with_callout_uses_build_result() -> None:
+    """A callout block keeps its custom title."""
     composer = ContentComposer()
     callout = CalloutComposer.warning(
         "Warning content",
@@ -220,6 +248,7 @@ def test_block_with_callout_uses_build_result() -> None:
 
 
 def test_formula() -> None:
+    """A formula is wrapped in display delimiters."""
     composer = ContentComposer()
 
     result = composer.formula(r"A = g^{a} \bmod p")
@@ -229,6 +258,7 @@ def test_formula() -> None:
 
 
 def test_formula_preserves_multiline_latex() -> None:
+    """A formula keeps its LaTeX unchanged."""
     composer = ContentComposer()
     latex = r"\begin{aligned}a &= b \\ c &= d\end{aligned}"
 
@@ -247,6 +277,7 @@ def test_formula_preserves_multiline_latex() -> None:
     ],
 )
 def test_inline_formatting(method: str, text: str, expected: str) -> None:
+    """Each inline helper wraps the text in its Markdown markers."""
     composer = ContentComposer()
 
     result = getattr(composer, method)(text)
@@ -264,10 +295,12 @@ def test_inline_formatting(method: str, text: str, expected: str) -> None:
     ],
 )
 def test_inline_formatting_with_empty_text(method: str, text: str) -> None:
+    """Inline helpers accept empty text."""
     assert getattr(ContentComposer, method)(text) in {"****", "**", "``", "$$"}
 
 
 def test_inline_formatting_with_special_characters() -> None:
+    """Inline helpers do not escape special characters."""
     assert ContentComposer.bold("a * b") == "**a * b**"
     assert ContentComposer.italic("a * b") == "*a * b*"
     assert ContentComposer.code("a ` b") == "`a ` b`"
@@ -275,6 +308,7 @@ def test_inline_formatting_with_special_characters() -> None:
 
 
 def test_inline_formatting_does_not_modify_composer() -> None:
+    """Inline helpers return text without appending blocks."""
     composer = ContentComposer()
 
     bold = composer.bold("important")
@@ -290,6 +324,7 @@ def test_inline_formatting_does_not_modify_composer() -> None:
 
 
 def test_blocks_are_separated_by_blank_lines() -> None:
+    """Blocks are joined with blank lines."""
     composer = ContentComposer()
 
     composer.h1("Title")
@@ -301,6 +336,7 @@ def test_blocks_are_separated_by_blank_lines() -> None:
 
 
 def test_fluent_block_composition() -> None:
+    """Block methods can be chained."""
     composer = (
         ContentComposer().h1("Title").h2("Section").h3("Subsection").paragraph("Text.")
     )
@@ -309,6 +345,7 @@ def test_fluent_block_composition() -> None:
 
 
 def test_inline_formatting_can_be_composed() -> None:
+    """Inline helpers can build the parts of a paragraph."""
     composer = ContentComposer()
 
     composer.paragraph(
@@ -327,6 +364,7 @@ def test_inline_formatting_can_be_composed() -> None:
 
 
 def test_all_block_operations_can_be_composed() -> None:
+    """Every block method can be chained in one expression."""
     composer = (
         ContentComposer()
         .h1("Title")
@@ -354,6 +392,7 @@ def test_all_block_operations_can_be_composed() -> None:
 
 
 def test_multiple_blocks_are_kept_in_insertion_order() -> None:
+    """Blocks are built in the order they were added."""
     composer = ContentComposer()
 
     composer.block("first")
@@ -364,6 +403,7 @@ def test_multiple_blocks_are_kept_in_insertion_order() -> None:
 
 
 def test_build_does_not_clear_blocks() -> None:
+    """Building twice gives the same result."""
     composer = ContentComposer()
 
     composer.h1("Title")
@@ -376,6 +416,7 @@ def test_build_does_not_clear_blocks() -> None:
 
 
 def test_build_reflects_blocks_added_after_previous_build() -> None:
+    """Blocks added after a build appear in the next one."""
     composer = ContentComposer()
 
     composer.h1("Title")
@@ -387,6 +428,7 @@ def test_build_reflects_blocks_added_after_previous_build() -> None:
 
 
 def test_empty_string_block_is_preserved() -> None:
+    """An empty block still counts as a block."""
     composer = ContentComposer()
 
     composer.block("")
@@ -396,6 +438,7 @@ def test_empty_string_block_is_preserved() -> None:
 
 
 def test_content_composer_initializes_empty_blocks() -> None:
+    """A new composer has no blocks."""
     composer = ContentComposer()
 
     assert composer._blocks == []

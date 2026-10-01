@@ -1,3 +1,11 @@
+"""Tests for ``perform_key_exchange``, the honest Diffie-Hellman protocol.
+
+They use the toy group p = 23, g = 2, q = 11 with the keys 6 and 7, and
+check the shared secret, the provided and generated key pairs, the exact
+timeline of 13 events with its actors and data, and the rejection of
+participants that use different groups.
+"""
+
 from unittest.mock import Mock
 
 import pytest
@@ -16,6 +24,7 @@ from kleptography.crypto.dh.tracing.events import (
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(
         prime=23,
         generator=2,
@@ -27,6 +36,7 @@ def parameters() -> DiffieHellmanParameters:
 def participants(
     parameters: DiffieHellmanParameters,
 ) -> tuple[DiffieHellmanParticipant, DiffieHellmanParticipant]:
+    """Return Alice and Bob with the private keys 6 and 7."""
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(parameters)
 
@@ -42,6 +52,7 @@ def test_perform_key_exchange_returns_result(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The exchange returns a successful result with equal secrets."""
     alice, bob = participants
 
     result = perform_key_exchange(alice, bob)
@@ -57,6 +68,7 @@ def test_perform_key_exchange_computes_expected_shared_secret(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The shared secret is B^a mod p."""
     alice, bob = participants
 
     result = perform_key_exchange(alice, bob)
@@ -77,6 +89,7 @@ def test_perform_key_exchange_computes_expected_shared_secret(
 def test_perform_key_exchange_generates_alice_keypair(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Alice gets a key pair if she has none."""
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(parameters)
 
@@ -92,6 +105,7 @@ def test_perform_key_exchange_generates_alice_keypair(
 def test_perform_key_exchange_generates_bob_keypair(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Bob gets a key pair if he has none."""
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(parameters)
 
@@ -110,6 +124,7 @@ def test_protocol_without_observer_does_not_require_tracing(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The exchange runs without an observer."""
     alice, bob = participants
 
     result = perform_key_exchange(alice, bob)
@@ -123,6 +138,7 @@ def test_protocol_emits_complete_high_level_timeline(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The observer receives the 13 events in protocol order."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -157,6 +173,7 @@ def test_protocol_events_have_sequential_numbers(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """Events are numbered consecutively from 1."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -177,6 +194,7 @@ def test_protocol_records_correct_actors(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """Each event is attributed to the right actor."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -211,6 +229,7 @@ def test_protocol_records_parameters(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The parameter events carry p, g and q."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -239,6 +258,7 @@ def test_protocol_records_public_key_exchange(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The send and receive events carry the right public keys."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -286,6 +306,7 @@ def test_protocol_records_shared_secret_computation(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The secret events carry each participant's computation."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -323,6 +344,7 @@ def test_protocol_records_successful_verification(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The verification event carries both secrets and the success."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -347,6 +369,7 @@ def test_protocol_accepts_generic_observer(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """Any OperationObserver receives the events."""
     alice, bob = participants
     observer = Mock()
 
@@ -365,6 +388,7 @@ def test_protocol_does_not_depend_on_protocol_execution_context(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The protocol only uses the observer interface."""
     alice, bob = participants
     observer = Mock()
 
@@ -386,6 +410,7 @@ def test_protocol_preserves_provided_keypairs(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """Provided key pairs are kept unchanged."""
     alice, bob = participants
 
     result = perform_key_exchange(alice, bob)
@@ -401,6 +426,7 @@ def test_protocol_preserves_provided_keypairs(
 def test_protocol_is_reproducible_with_provided_keypairs(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Provided keys give the same timeline on every run."""
     timelines = []
 
     for _ in range(2):
@@ -420,6 +446,7 @@ def test_protocol_is_reproducible_with_provided_keypairs(
 def test_protocol_generates_keypairs_for_participants_without_one(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Missing key pairs are generated and traced as generated."""
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(parameters)
     observer = ProtocolExecutionContext()
@@ -441,6 +468,7 @@ def test_protocol_generates_keypairs_for_participants_without_one(
 def test_protocol_mixes_provided_and_generated_keypairs(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """A provided and a generated key are traced as such."""
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(parameters)
     alice.load_private_key(6)
@@ -459,6 +487,7 @@ def test_protocol_mixes_provided_and_generated_keypairs(
 def test_protocol_reuses_keypairs_across_exchanges(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """A second exchange reuses the same keys (static DH)."""
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(parameters)
 
@@ -479,6 +508,7 @@ def test_protocol_records_public_key_derivation(
         DiffieHellmanParticipant,
     ],
 ) -> None:
+    """The public key event carries g, x, p, g^x and its expression."""
     alice, bob = participants
     observer = ProtocolExecutionContext()
 
@@ -499,6 +529,7 @@ def test_protocol_records_public_key_derivation(
 def test_protocol_rejects_mismatched_parameters(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Different groups are rejected before any key or event."""
     other_parameters = DiffieHellmanParameters(
         prime=47,
         generator=2,
@@ -519,6 +550,7 @@ def test_protocol_rejects_mismatched_parameters(
 def test_protocol_accepts_equal_but_distinct_parameter_objects(
     parameters: DiffieHellmanParameters,
 ) -> None:
+    """Equal parameters in distinct objects are accepted."""
     alice = DiffieHellmanParticipant(parameters)
     bob = DiffieHellmanParticipant(
         DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)

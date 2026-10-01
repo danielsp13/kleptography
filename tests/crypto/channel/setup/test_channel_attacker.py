@@ -1,4 +1,10 @@
-"""
+"""Tests for ``intercept_channel``, the attacker of the encrypted channel.
+
+They check that the attacker reads every session but the first from the
+public transcript alone, that each recovered value is the one the device
+really used, that an honest Alice defeats it, and that a configuration or
+transcript of another group is rejected.
+
 Toy group p = 23, g = 2, q = 11; Y = 8 (X = 3), a = 2, b = 2, W = 3,
 H(v) = v mod 10 + 1. Honest keys are fixed by patching the honest generator
 (Alice, then Bob, per session); with t = 0 the device chains c1 = 6 → c2 = 4
@@ -57,16 +63,19 @@ def toy_hash(value: int, *, parameters: DiffieHellmanParameters) -> int:
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
 @pytest.fixture
 def attacker(parameters: DiffieHellmanParameters) -> YoungYungAttacker:
+    """Return the attacker with X = 3 (Y = 8)."""
     return YoungYungAttacker(parameters, 3)
 
 
 @pytest.fixture
 def configuration(parameters: DiffieHellmanParameters) -> YoungYungConfiguration:
+    """Return the test-vector configuration with the readable toy H."""
     return YoungYungConfiguration(
         parameters=parameters,
         attacker_public_key=8,
@@ -78,6 +87,7 @@ def configuration(parameters: DiffieHellmanParameters) -> YoungYungConfiguration
 
 
 def fix_private_keys(monkeypatch: pytest.MonkeyPatch, *keys: int) -> None:
+    """Make honest key generation return ``keys`` in order."""
     sequence: Iterator[int] = iter(keys)
 
     def next_key(self: DiffieHellmanParticipant) -> int:
@@ -87,6 +97,7 @@ def fix_private_keys(monkeypatch: pytest.MonkeyPatch, *keys: int) -> None:
 
 
 def force_correction_bit(monkeypatch: pytest.MonkeyPatch, correction_bit: int) -> None:
+    """Make every device sample the given correction bit t."""
     monkeypatch.setattr(
         YoungYungDiffieHellmanParticipant,
         "_sample_correction_bit",
@@ -100,6 +111,7 @@ def test_attacker_reads_every_session_but_the_first(
     configuration: YoungYungConfiguration,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """The attacker reads sessions 2 and 3, but not session 1."""
     fix_private_keys(monkeypatch, 6, 7, 7, 7)
     force_correction_bit(monkeypatch, 0)
     device = YoungYungDiffieHellmanParticipant(parameters, configuration)
@@ -279,6 +291,7 @@ def test_single_session_channel_reveals_nothing(
     attacker: YoungYungAttacker,
     configuration: YoungYungConfiguration,
 ) -> None:
+    """A channel of one session reveals nothing."""
     device = YoungYungDiffieHellmanParticipant(parameters, configuration)
     transcript = run_channel(
         device, DiffieHellmanParticipant(parameters), SESSIONS[:1]
@@ -318,6 +331,7 @@ def test_configuration_for_another_group_is_rejected(
     parameters: DiffieHellmanParameters,
     configuration: YoungYungConfiguration,
 ) -> None:
+    """A configuration for another group is rejected."""
     other = DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
     other_attacker = YoungYungAttacker(other, 3)
     transcript = ChannelTranscript(
@@ -339,6 +353,7 @@ def test_transcript_of_another_group_is_rejected(
     attacker: YoungYungAttacker,
     configuration: YoungYungConfiguration,
 ) -> None:
+    """A transcript of another group is rejected."""
     other = DiffieHellmanParameters(prime=47, generator=2, subgroup_order=23)
     transcript = ChannelTranscript(
         parameters=other,

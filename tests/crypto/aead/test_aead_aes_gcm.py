@@ -1,3 +1,11 @@
+"""Tests for AES-256-GCM encryption and decryption.
+
+They check the published test vectors (McGrew and Viega, test cases 13 to
+15), the round trip, random 96-bit nonces, that a wrong key or any flipped
+bit fails the tag check, and that only 32-byte keys and 12-byte nonces are
+accepted.
+"""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -131,6 +139,7 @@ def test_decrypt_with_wrong_key_fails() -> None:
 
 
 def _flip_first_bit(data: bytes) -> bytes:
+    """Return ``data`` with its first bit flipped."""
     return bytes([data[0] ^ 1]) + data[1:]
 
 

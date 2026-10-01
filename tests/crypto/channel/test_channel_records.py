@@ -1,3 +1,11 @@
+"""Tests for the channel value objects.
+
+They check that plain messages are validated (sender, printable ASCII,
+length), that the private records expose delivery and key agreement, that
+their ``.transcript`` keeps only public data, and that sessions are numbered
+1, 2, ... in order.
+"""
+
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
@@ -28,10 +36,12 @@ ENCRYPTED = EncryptedMessage(nonce=bytes(12), ciphertext=b"abc", tag=bytes(16))
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
 def _channel_message(sender: Actor = Actor.ALICE) -> ChannelMessage:
+    """Return a delivered message from ``sender``."""
     return ChannelMessage(
         sender=sender,
         plaintext="abc",
@@ -41,6 +51,7 @@ def _channel_message(sender: Actor = Actor.ALICE) -> ChannelMessage:
 
 
 def _channel_session(number: int, *, bob_secret: int = 6) -> ChannelSession:
+    """Return a session of the toy group; keys match unless ``bob_secret`` != 6."""
     # Toy reference exchange: A = 18, B = 13, shared secret 6.
     return ChannelSession(
         number=number,
@@ -54,6 +65,7 @@ def _channel_session(number: int, *, bob_secret: int = 6) -> ChannelSession:
 
 
 def _session_transcript(number: int) -> SessionTranscript:
+    """Return the public transcript of a session without messages."""
     return SessionTranscript(
         number=number,
         alice_public_key=18,

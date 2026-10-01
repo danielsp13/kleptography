@@ -1,5 +1,7 @@
-"""
-Tests for the RFC 7919 FFDHE8192 group.
+"""Tests for the RFC 7919 FFDHE8192 group.
+
+They check the subgroup order given by the RFC, the bit length of p, the
+primality of p and q, q = (p - 1) / 2, and that the generator has order q.
 """
 
 from __future__ import annotations

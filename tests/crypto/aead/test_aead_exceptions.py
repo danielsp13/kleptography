@@ -1,3 +1,9 @@
+"""Tests for the AEAD exception hierarchy.
+
+They check that AEAD errors are independent of the DH hierarchy and that
+each one is also the matching builtin.
+"""
+
 from __future__ import annotations
 
 import pytest

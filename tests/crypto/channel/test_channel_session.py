@@ -1,4 +1,10 @@
-"""
+"""Tests for ``run_session``, one session of the encrypted channel.
+
+They check that both parties derive the same key, that keys are always
+ephemeral, that every message is delivered under a fresh nonce, that the
+public view hides keys and plaintexts, that the device is a drop-in
+replacement for Alice, and that different groups fail before any key.
+
 Toy group p = 23, g = 2, q = 11. Private keys are fixed by patching the
 honest generator, so a = 6, b = 7 gives A = 18, B = 13 and the secret 6.
 """
@@ -32,10 +38,12 @@ MESSAGES = (
 
 @pytest.fixture
 def parameters() -> DiffieHellmanParameters:
+    """Return the toy group p = 23, g = 2, q = 11."""
     return DiffieHellmanParameters(prime=23, generator=2, subgroup_order=11)
 
 
 def fix_private_keys(monkeypatch: pytest.MonkeyPatch, *keys: int) -> None:
+    """Make honest key generation return ``keys`` in order."""
     sequence: Iterator[int] = iter(keys)
 
     def next_key(self: DiffieHellmanParticipant) -> int:

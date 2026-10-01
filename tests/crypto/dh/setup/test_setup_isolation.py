@@ -1,4 +1,5 @@
-"""
+"""Isolation tests for the honest DH code.
+
 The honest DH code never depends on the kleptographic SETUP (principle 2).
 """
 
@@ -21,6 +22,7 @@ HONEST_MODULES = sorted(
 
 
 def test_honest_modules_are_found() -> None:
+    """The scan covers the honest participant, protocol and validation."""
     names = {path.name for path in HONEST_MODULES}
 
     assert {"participant.py", "protocol.py", "validation.py"} <= names
@@ -32,6 +34,7 @@ def test_honest_modules_are_found() -> None:
     ids=[str(path.relative_to(HONEST_ROOT)) for path in HONEST_MODULES],
 )
 def test_honest_module_does_not_import_setup(path: Path) -> None:
+    """No honest DH module imports the SETUP."""
     source = path.read_text(encoding="utf-8")
 
     assert "kleptography.crypto.dh.setup" not in source
@@ -39,6 +42,7 @@ def test_honest_module_does_not_import_setup(path: Path) -> None:
 
 
 def test_honest_participant_has_no_setup_fields() -> None:
+    """The honest participant has no SETUP field."""
     names = {field.name for field in fields(DiffieHellmanParticipant)}
 
     assert names == {"parameters", "_private_key", "_public_key"}
