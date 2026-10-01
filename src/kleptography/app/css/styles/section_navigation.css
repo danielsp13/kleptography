@@ -1,0 +1,211 @@
+/* ============================================================
+   Section navigation
+   The sidebar of a section ("On this page" and the other sections) and
+   its main tabs, which stick under the page header while scrolling.
+   Same palette as the site header, in light and dark themes.
+   ============================================================ */
+
+[data-testid="stSidebar"] {
+    /* ---- Colors ---- */
+    --sn-border: #30353d;
+    --sn-surface: linear-gradient(180deg, #20242a, #181b20);
+    --sn-surface-hover: #2b3139;
+
+    --sn-text: #f4f5f7;
+    --sn-text-soft: #d5dae0;
+    --sn-text-faint: #8f99a6;
+
+    --sn-accent: #8fa8ff;
+    --sn-accent-bg: rgba(143, 168, 255, 0.12);
+    --sn-accent-border: rgba(143, 168, 255, 0.35);
+
+    border-right: 1px solid var(--sn-border);
+    background: var(--sn-surface);
+    color: var(--sn-text-soft);
+}
+
+[data-testid="stSidebar"] [data-testid="stIconMaterial"] {
+    color: inherit !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button {
+    color: var(--sn-text-faint);
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: var(--sn-border);
+}
+
+/* Small headings: "On this page", "Sections". */
+.section-sidebar__heading {
+    margin: 0;
+
+    color: var(--sn-text-faint);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* Tabs of the section: the active one is tinted with the accent. */
+[data-testid="stSidebar"] [data-testid^="stBaseButton-"]:not(
+        [data-testid="stBaseButton-headerNoPadding"]
+    ) {
+    justify-content: flex-start;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.75rem;
+
+    border: 1px solid transparent;
+    border-radius: 0.6rem;
+
+    background: transparent;
+    color: var(--sn-text-soft);
+
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+[class*="st-key-section-sidebar-tab"] button > div {
+    justify-content: flex-start;
+    width: 100%;
+}
+
+[data-testid="stSidebar"] [data-testid="stBaseButton-tertiary"]:hover {
+    background: var(--sn-surface-hover);
+    color: var(--sn-text);
+}
+
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"],
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"]:hover {
+    border-color: var(--sn-accent-border) !important;
+    background: var(--sn-accent-bg) !important;
+    color: var(--sn-accent) !important;
+}
+
+[data-testid="stSidebar"] [data-testid^="stBaseButton-"] p {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Headings of the active tab: a table of contents with a guide line. */
+[class*="st-key-section-anchors"] ul {
+    margin: 0 0 0 1.35rem;
+    padding: 0 0 0 0.75rem;
+
+    border-left: 1px solid var(--sn-border);
+    list-style: none;
+}
+
+[class*="st-key-section-anchors"] li {
+    margin: 0;
+    padding: 0.2rem 0;
+}
+
+[class*="st-key-section-anchors"] a {
+    color: var(--sn-text-soft) !important;
+    font-size: 0.92rem;
+    text-decoration: none !important;
+}
+
+[class*="st-key-section-anchors"] a:hover,
+[class*="st-key-section-anchors"] a:focus-visible {
+    color: var(--sn-accent) !important;
+}
+
+/* Links to home and to the sections; the current page is highlighted. */
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] {
+    border-radius: 0.6rem;
+}
+
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] p,
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"] span {
+    color: var(--sn-text-soft) !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"]:hover {
+    background: var(--sn-surface-hover);
+}
+
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"][aria-current="page"] {
+    background: var(--sn-accent-bg);
+}
+
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"][aria-current="page"] p,
+[data-testid="stSidebar"] [data-testid="stPageLink-NavLink"][aria-current="page"] span {
+    color: var(--sn-accent) !important;
+}
+
+/* ------------------------------------------------------------
+   Sidebar toggle
+   ------------------------------------------------------------ */
+
+/* While the sidebar is collapsed (always at first on narrow screens),
+   Streamlit only shows a faint ">>" icon. Turn it into a labelled pill with
+   the header palette, so it is clear that the section has a sidebar. */
+[data-testid="stExpandSidebarButton"] {
+    gap: 0.35rem;
+    width: auto !important;
+    height: auto !important;
+    padding: 0.35rem 0.85rem 0.35rem 0.6rem !important;
+
+    border: 1px solid rgba(143, 168, 255, 0.35) !important;
+    border-radius: 999px !important;
+
+    background: linear-gradient(135deg, #20242a, #181b20) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    color: #8fa8ff !important;
+
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"] {
+    color: inherit !important;
+}
+
+[data-testid="stExpandSidebarButton"]::after {
+    content: "On this page";
+
+    color: #f4f5f7;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+[data-testid="stExpandSidebarButton"]:hover,
+[data-testid="stExpandSidebarButton"]:focus-visible {
+    border-color: #8fa8ff !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+/* ------------------------------------------------------------
+   Sticky tabs
+   ------------------------------------------------------------ */
+
+/* The tab list of the main tabs sticks under the 60 px page header. Streamlit
+   exposes no theme variables, so a translucent, blurred background keeps it
+   readable in both themes. Nested tabs (one per session) do not stick. */
+[class*="st-key-section-tabs"] > [data-testid="stTabs"] > div > [role="tablist"] {
+    position: sticky;
+    top: 3.75rem;
+    z-index: 10;
+
+    background: rgba(128, 128, 128, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+/* Headings jumped to from the sidebar stay clear of the header and tabs. */
+[data-testid="stHeading"] [id] {
+    scroll-margin-top: 8.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-testid="stSidebar"] [data-testid^="stBaseButton-"],
+    [data-testid="stExpandSidebarButton"] {
+        transition: none;
+    }
+}

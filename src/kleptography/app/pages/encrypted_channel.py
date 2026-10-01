@@ -10,7 +10,7 @@ orchestrates the ``crypto`` API.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 
 import streamlit as st
@@ -32,7 +32,13 @@ from kleptography.app.components.encrypted_channel import (
     render_component_transcript,
 )
 from kleptography.app.components.footer import render_component_footer
-from kleptography.app.components.navigation import render_component_back_home
+from kleptography.app.components.navigation import (
+    PageAnchor,
+    SectionTab,
+    render_component_back_home,
+    render_component_section_sidebar,
+    render_component_section_tabs,
+)
 from kleptography.app.components.protocol import (
     ValueDisplay,
     Visibility,
@@ -96,6 +102,7 @@ from kleptography.crypto.kdf.records import KeyDerivation
 
 # Widget and session state prefix, and session state keys.
 _PREFIX = "ch"
+_TAB = "ch_tab"
 _BACKDOOR = "ch_backdoor"
 _RUN = "ch_run"
 _ATTACKER_PREFIX = "ch_attacker"
@@ -115,6 +122,49 @@ _SESSIONS_DEFAULT = 3
 
 # From this size on (FFDHE6144, FFDHE8192), running the channel takes long.
 _SLOW_GROUP_BITS = 6144
+
+# The tabs of the section and their headings, for the tabs and the sidebar.
+# The anchors of "The idea" are the ones Streamlit derives from the Markdown
+# headings of build_channel_concept_content.
+_TABS = (
+    SectionTab(
+        "The idea",
+        ":material/lightbulb:",
+        (
+            PageAnchor(
+                "From a key exchange to a secure channel",
+                "from-a-key-exchange-to-a-secure-channel",
+            ),
+            PageAnchor("The ciphersuite", "the-ciphersuite"),
+            PageAnchor("What everyone knows", "what-everyone-knows"),
+            PageAnchor(
+                "How the SETUP breaks the channel", "how-the-setup-breaks-the-channel"
+            ),
+            PageAnchor("Session 1 stays confidential", "session-1-stays-confidential"),
+            PageAnchor("Why nothing looks wrong", "why-nothing-looks-wrong"),
+        ),
+    ),
+    SectionTab(
+        "Participant",
+        ":material/forum:",
+        (
+            PageAnchor("1 · Choose the public parameters", "ch-parameters"),
+            PageAnchor("2 · Choose Alice's device", "ch-device"),
+            PageAnchor("3 · Write the messages", "ch-messages"),
+            PageAnchor("4 · Run the channel", "ch-run"),
+        ),
+    ),
+    SectionTab(
+        "Attacker",
+        ":material/visibility:",
+        (
+            PageAnchor("1 · What you know", "ch-attacker-known"),
+            PageAnchor("2 · What crossed the network", "ch-attacker-transcript"),
+            PageAnchor("3 · Your workbench", "ch-attacker-workbench"),
+            PageAnchor("4 · Summary", "ch-attacker-summary"),
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,12 +190,8 @@ def render_page_encrypted_channel() -> None:
         icon=":material/school:",
     )
 
-    concept_tab, participant_tab, attacker_tab = st.tabs(
-        [
-            ":material/lightbulb: The idea",
-            ":material/forum: Participant",
-            ":material/visibility: Attacker",
-        ]
+    concept_tab, participant_tab, attacker_tab = render_component_section_tabs(
+        _TABS, state_key=_TAB
     )
 
     with concept_tab:
@@ -157,7 +203,18 @@ def render_page_encrypted_channel() -> None:
     with attacker_tab:
         _render_attacker()
 
+    # After the tabs, so the sidebar already sees a run made in this one.
+    render_component_section_sidebar(_sidebar_tabs(), state_key=_TAB)
     render_component_footer()
+
+
+def _sidebar_tabs() -> tuple[SectionTab, ...]:
+    """Return the tabs for the sidebar, without headings that are not shown."""
+    # Until the channel runs, the Attacker tab has none of its headings.
+    if st.session_state.get(_RUN) is not None:
+        return _TABS
+    concept, participant, attacker = _TABS
+    return concept, participant, replace(attacker, anchors=())
 
 
 def _render_participant() -> None:
@@ -166,7 +223,7 @@ def _render_participant() -> None:
 
     number_format = render_component_number_format(key_prefix=_PREFIX)
 
-    st.header("1 · Choose the public parameters")
+    st.header("1 · Choose the public parameters", anchor="ch-parameters")
     parameters = render_component_group_selection(
         key_prefix=_PREFIX, number_format=number_format
     )
@@ -197,7 +254,7 @@ def _backdoor_for(parameters: DiffieHellmanParameters) -> Backdoor:
 
 def _render_device_section() -> DeviceKind:
     """Render section 2 and return the device chosen for Alice."""
-    st.header("2 · Choose Alice's device")
+    st.header("2 · Choose Alice's device", anchor="ch-device")
     st.markdown(
         "Alice's ephemeral keys come from a device she cannot inspect. Pick "
         "the one she uses."
@@ -219,7 +276,7 @@ def _render_device_section() -> DeviceKind:
 
 def _render_messages_section() -> list[list[PlainMessage]] | None:
     """Render section 3 and return the messages, or ``None`` if one is invalid."""
-    st.header("3 · Write the messages")
+    st.header("3 · Write the messages", anchor="ch-messages")
     st.markdown(
         "Every session starts with a new key exchange. In each one, Alice "
         "and Bob send each other one message. Messages are printable ASCII "
@@ -321,7 +378,7 @@ def _render_run_section(
     sessions: Sequence[Sequence[PlainMessage]] | None,
 ) -> None:
     """Render section 4 and run the channel when the button is pressed."""
-    st.header("4 · Run the channel")
+    st.header("4 · Run the channel", anchor="ch-run")
 
     if parameters.bit_length >= _SLOW_GROUP_BITS:
         st.warning(
@@ -443,7 +500,7 @@ def _render_attacker() -> None:
     display = ValueDisplay(number_format, experiment.parameters.bit_length)
     transcript = experiment.run.transcript
 
-    st.header("1 · What you know")
+    st.header("1 · What you know", anchor="ch-attacker-known")
     st.markdown(
         "The system is public (Kerckhoffs): the group of the last run, with "
         f"a **{experiment.parameters.bit_length}-bit** prime, and the "
@@ -458,7 +515,7 @@ def _render_attacker() -> None:
     st.markdown(build_artifacts_content(), unsafe_allow_html=True)
 
     st.divider()
-    st.header("2 · What crossed the network")
+    st.header("2 · What crossed the network", anchor="ch-attacker-transcript")
     st.markdown(
         "This is the whole transcript of the last run: every public key and "
         "every encrypted message. Eve recorded exactly the same."
@@ -469,7 +526,7 @@ def _render_attacker() -> None:
     _render_workbench(experiment, transcript, display)
 
     st.divider()
-    st.header("4 · Summary")
+    st.header("4 · Summary", anchor="ch-attacker-summary")
     st.markdown(
         "The same recovery, applied to every session at once. Bob reads "
         "everything because he holds the keys; Eve reads nothing."
@@ -484,7 +541,7 @@ def _render_workbench(
     display: ValueDisplay,
 ) -> None:
     """Render the attacker's workbench for the selected session."""
-    st.header("3 · Your workbench")
+    st.header("3 · Your workbench", anchor="ch-attacker-workbench")
     st.markdown(
         "Pick a session and read it step by step. Each field starts empty: "
         "type a value, or press the button next to it to paste the result of "

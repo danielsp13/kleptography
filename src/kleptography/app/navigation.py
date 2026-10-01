@@ -1,8 +1,9 @@
 """Page registry for the Streamlit application.
 
-Navigation is hidden (no sidebar): pages link to each other explicitly
-through ``st.page_link``. Streamlit identifies a page by its ``url_path``,
-so each factory can be called wherever a link is needed.
+Streamlit's page menu is hidden: pages link to each other explicitly
+through ``st.page_link`` (sections also from their own sidebar). Streamlit
+identifies a page by its ``url_path``, so each factory can be called
+wherever a link is needed.
 
 Page modules import this module to build links, so the page renderers are
 imported inside the factories to avoid a circular import.
