@@ -14,8 +14,10 @@ from kleptography.crypto.dh.setup.records import SetupDerivation
 class YoungYungDiffieHellmanParticipant(DiffieHellmanParticipant):
     configuration: YoungYungConfiguration
 
-    _last_derivation: SetupDerivation | None = field(
-        init=False, default=None, repr=False
+    # SETUP derivations of the current chain, in order: c2 from c1, c3 from c2, …
+    # A new chain (honest c1 or a loaded key) starts empty.
+    _derivations: list[SetupDerivation] = field(
+        init=False, default_factory=list, repr=False
     )
 
     def __post_init__(self) -> None:
@@ -25,17 +27,21 @@ class YoungYungDiffieHellmanParticipant(DiffieHellmanParticipant):
             )
 
     @property
+    def derivations(self) -> tuple[SetupDerivation, ...]:
+        return tuple(self._derivations)
+
+    @property
     def last_derivation(self) -> SetupDerivation | None:
-        return self._last_derivation
+        return self._derivations[-1] if self._derivations else None
 
     def load_private_key(self, private_key: int) -> None:
         DiffieHellmanParticipant.load_private_key(self, private_key)
-        self._last_derivation = None
+        self._derivations.clear()
 
     def _generate_private_key(self) -> int:
         previous_private_key = self._private_key
         if previous_private_key is None:
-            self._last_derivation = None
+            self._derivations.clear()
             return DiffieHellmanParticipant._generate_private_key(self)
 
         derivation = derive_setup(
@@ -43,7 +49,7 @@ class YoungYungDiffieHellmanParticipant(DiffieHellmanParticipant):
             correction_bit=self._sample_correction_bit(),
             configuration=self.configuration,
         )
-        self._last_derivation = derivation
+        self._derivations.append(derivation)
         return derivation.private_key
 
     def _sample_correction_bit(self) -> int:

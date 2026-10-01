@@ -541,3 +541,78 @@ def test_last_derivation_follows_the_chain(
         assert derivation is not None
         assert derivation.previous_private_key == previous_private_key
         assert derivation.private_key == toy_device.private_key
+
+
+def test_derivations_are_empty_until_setup_runs(
+    device: YoungYungDiffieHellmanParticipant,
+) -> None:
+    assert device.derivations == ()
+
+    device.generate_keypair()
+
+    assert device.derivations == ()
+
+
+def test_derivations_record_the_whole_chain(
+    device: YoungYungDiffieHellmanParticipant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """c2 = 4 from c1 = 6 (t = 0, z = 3); c3 = 4 from c2 = 4 (t = 0, z = 13)."""
+    force_correction_bit(monkeypatch, 0)
+    device.load_private_key(6)
+
+    device.generate_keypair()
+    device.generate_keypair()
+
+    assert device.derivations == (
+        SetupDerivation(previous_private_key=6, correction_bit=0, z=3, private_key=4),
+        SetupDerivation(previous_private_key=4, correction_bit=0, z=13, private_key=4),
+    )
+    assert device.last_derivation == device.derivations[-1]
+    assert device.private_key == 4
+
+
+def test_derivations_chain_consecutive_exponents(
+    toy_device: YoungYungDiffieHellmanParticipant,
+) -> None:
+    toy_device.generate_keypair()
+    private_keys = [toy_device.private_key]
+
+    for _ in range(4):
+        toy_device.generate_keypair()
+        private_keys.append(toy_device.private_key)
+
+    derivations = toy_device.derivations
+    assert [d.previous_private_key for d in derivations] == private_keys[:-1]
+    assert [d.private_key for d in derivations] == private_keys[1:]
+
+
+def test_load_private_key_starts_a_new_chain(
+    device: YoungYungDiffieHellmanParticipant,
+) -> None:
+    device.load_private_key(6)
+    device.generate_keypair()
+    device.generate_keypair()
+    assert len(device.derivations) == 2
+
+    device.load_private_key(6)
+    assert device.derivations == ()
+
+    device.generate_keypair()
+    assert len(device.derivations) == 1
+    assert device.derivations[0].previous_private_key == 6
+
+
+def test_derivations_snapshot_is_immutable(
+    device: YoungYungDiffieHellmanParticipant,
+) -> None:
+    """Callers get a tuple snapshot; later generations do not change it."""
+    device.load_private_key(6)
+    device.generate_keypair()
+    snapshot = device.derivations
+
+    device.generate_keypair()
+
+    assert isinstance(snapshot, tuple)
+    assert len(snapshot) == 1
+    assert len(device.derivations) == 2
