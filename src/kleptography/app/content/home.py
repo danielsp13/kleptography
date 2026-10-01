@@ -3,6 +3,10 @@
 from kleptography.app.content.callouts import CalloutComposer
 from kleptography.app.content.composer import ContentComposer
 
+DOCUMENTATION_URL = (
+    "https://github.com/danielsp13/kleptography/blob/main/docs/README.md"
+)
+
 
 def build_home_content() -> str:
     """Return the introduction and roadmap of the home page as Markdown."""
@@ -184,6 +188,20 @@ def build_home_content() -> str:
                 "constructions."
             ),
         ]
+    )
+
+    content.divider()
+
+    content.h2("Documentation")
+
+    content.paragraph(
+        "The interactive sections are built on a Python library that can be "
+        "used and studied on its own. Its ",
+        "[developer documentation](" + DOCUMENTATION_URL + ")",
+        " describes the architecture, the number theory, the Diffie-Hellman "
+        "implementation, the Young-Yung SETUP, the key derivation and AES-GCM "
+        "primitives, and the encrypted channel, with diagrams and runnable "
+        "examples.",
     )
 
     content.divider()
