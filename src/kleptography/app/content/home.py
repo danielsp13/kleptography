@@ -158,8 +158,10 @@ def build_home_content() -> str:
 
     content.paragraph(
         content.bold("Implementation status:"),
-        " the honest Diffie-Hellman exchange and the Young-Yung SETUP on it "
-        "are both available as interactive sections.",
+        " the honest Diffie-Hellman exchange, the Young-Yung SETUP on it "
+        "and an encrypted channel (Diffie-Hellman, a key derivation function "
+        "and AES-GCM) compromised by that SETUP are available as "
+        "interactive sections.",
     )
 
     content.divider()
