@@ -1,5 +1,6 @@
 """The site header: logo, title, description and tags."""
 
+from kleptography import __version__
 from kleptography.app.assets.loader import asset_data_uri
 from kleptography.app.css.loader import load_css
 from kleptography.app.html.loader import render_template
@@ -19,9 +20,9 @@ def render_component_header() -> None:
         logo=logo,
         title="Kleptography",
         subtitle="Cryptography against cryptography",
-        description="An open-source educational project for studying and"
+        description="An open-source educational project for studying and "
         + "demonstrating kleptographic techniques.",
-        version="1.0.0",
+        version=__version__,
         release_date="2026-09-21",
         author_name="Daniel Pérez Ruiz",
         author_role="Cryptography Software Engineer @",
