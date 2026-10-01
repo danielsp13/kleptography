@@ -1053,7 +1053,9 @@ imports only `channel`, `dh`, `kdf`, `aead` and `math`).
 ### 4.8 Developer documentation (`docs/`)
 
 Markdown only (no site generator), in English, linked from the README
-("Documentation" section) and the footer.
+("Documentation" section), the footer (`tree/main/docs`) and the home page
+("Documentation" section of `content/home.py`, `DOCUMENTATION_URL` →
+`blob/main/docs/README.md`).
 
 ```text
 docs/
