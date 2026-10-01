@@ -1,5 +1,4 @@
-"""
-Execution of an honest Diffie-Hellman key exchange between two participants.
+"""Execution of an honest Diffie-Hellman key exchange between two participants.
 
 The exchange runs in five explicit phases:
 
@@ -30,8 +29,7 @@ def perform_key_exchange(
     *,
     observer: OperationObserver | None = None,
 ) -> DiffieHellmanExchangeResult:
-    """
-    Perform a complete Diffie-Hellman exchange and optionally trace it.
+    """Perform a complete Diffie-Hellman exchange and optionally trace it.
 
     Participants that already hold a key pair keep it, which allows
     reproducible exchanges with known exponents. Participants without a key
@@ -39,11 +37,17 @@ def perform_key_exchange(
     the exchange, so reusing them in another exchange reuses the same keys;
     call ``generate_keypair()`` or use new participants for fresh ones.
 
-    Raises
-    ------
-    DiffieHellmanParametersMismatch
-        If both participants do not use the same parameters. Nothing is
-        generated or traced in that case.
+    Args:
+        alice: The participant who sends her public value first.
+        bob: The other participant.
+        observer: An optional observer that receives every protocol event.
+
+    Returns:
+        Both shared secrets and whether they match.
+
+    Raises:
+        DiffieHellmanParametersMismatch: If both participants do not use the
+            same parameters. Nothing is generated or traced in that case.
     """
     _agree_parameters(alice, bob, observer)
 

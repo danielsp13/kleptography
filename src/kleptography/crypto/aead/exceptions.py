@@ -1,6 +1,4 @@
-"""
-Exceptions raised by the authenticated encryption (AEAD) implementation.
-"""
+"""Exceptions raised by the authenticated encryption (AEAD) implementation."""
 
 from __future__ import annotations
 

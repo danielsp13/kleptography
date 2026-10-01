@@ -1,3 +1,5 @@
+"""Value objects describing the events of a Diffie-Hellman execution."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -45,6 +47,7 @@ class ProtocolEvent:
     data: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        """Validate the sequence number and freeze the event data."""
         if self.sequence < 1:
             raise ValueError("Protocol event sequence must be greater than zero.")
 

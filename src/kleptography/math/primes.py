@@ -1,6 +1,4 @@
-"""
-Prime number utilities.
-"""
+"""Prime number utilities."""
 
 from __future__ import annotations
 
@@ -8,8 +6,7 @@ from sympy import isprime, primitive_root, randprime
 
 
 def generate_safe_prime(bits: int) -> int:
-    """
-    Generate a random safe prime with the requested bit length.
+    """Generate a random safe prime with the requested bit length.
 
     A safe prime is a prime ``p`` such that ``p = 2q + 1``, where ``q`` is
     also prime.
@@ -38,8 +35,7 @@ def generate_safe_prime(bits: int) -> int:
 
 
 def generate_subgroup_generator(prime: int) -> int:
-    """
-    Generate a generator of the order-(p - 1) / 2 subgroup modulo a safe prime.
+    """Generate a generator of the order-(p - 1) / 2 subgroup modulo a safe prime.
 
     Args:
         prime: A safe prime.

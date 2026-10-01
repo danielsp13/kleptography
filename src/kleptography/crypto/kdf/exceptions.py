@@ -1,6 +1,4 @@
-"""
-Exceptions raised by the key derivation function (KDF) implementation.
-"""
+"""Exceptions raised by the key derivation function (KDF) implementation."""
 
 from __future__ import annotations
 

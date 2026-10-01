@@ -1,6 +1,4 @@
-"""
-Value objects for key derivation.
-"""
+"""Value objects for key derivation."""
 
 from __future__ import annotations
 
@@ -14,8 +12,7 @@ KEY_SIZE = 32
 
 @dataclass(frozen=True, slots=True)
 class KeyDerivation:
-    """
-    Every value involved in deriving a session key from a shared secret.
+    """Every value involved in deriving a session key from a shared secret.
 
     The derivation is deterministic: the same shared secret always gives the
     same key. Nothing here adds secrecy beyond the shared secret itself, so

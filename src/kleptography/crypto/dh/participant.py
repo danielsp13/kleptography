@@ -1,6 +1,4 @@
-"""
-Implementation of an honest Diffie-Hellman participant.
-"""
+"""Implementation of an honest Diffie-Hellman participant."""
 
 from __future__ import annotations
 
@@ -18,8 +16,7 @@ from kleptography.math.modular import mod_pow
 
 @dataclass(slots=True)
 class DiffieHellmanParticipant:
-    """
-    Honest participant in a finite-field Diffie-Hellman key exchange.
+    """Honest participant in a finite-field Diffie-Hellman key exchange.
 
     The key pair is read-only from the outside. It can only be set through
     ``generate_keypair()`` (fresh random exponent) or ``load_private_key()``
@@ -53,15 +50,15 @@ class DiffieHellmanParticipant:
         self._set_keypair(self._generate_private_key())
 
     def load_private_key(self, private_key: int) -> None:
-        """
-        Use a known private exponent, replacing any previous key pair.
+        """Use a known private exponent, replacing any previous key pair.
 
         The public value is derived from the exponent.
 
-        Raises
-        ------
-        InvalidPrivateKey
-            If the private exponent is outside [1, q - 1].
+        Args:
+            private_key: The private exponent x to use.
+
+        Raises:
+            InvalidPrivateKey: If the private exponent is outside [1, q - 1].
         """
         validate_private_key(
             private_key,
@@ -76,11 +73,13 @@ class DiffieHellmanParticipant:
         self._public_key = self._compute_public_key(private_key)
 
     def _generate_private_key(self) -> int:
-        """
-        Generate a uniformly random private exponent.
+        """Generate a uniformly random private exponent.
 
         The exponent belongs to [1, q - 1], where q is the order
         of the subgroup used by the DH parameters.
+
+        Returns:
+            The new private exponent.
         """
         private_key = randbelow(self.parameters.subgroup_order - 1) + 1
 
@@ -100,16 +99,20 @@ class DiffieHellmanParticipant:
         )
 
     def compute_shared_secret(self, peer_public_key: int | None) -> int:
-        """
-        Compute the shared DH secret from a peer's public value.
+        """Compute the shared DH secret from a peer's public value.
 
-        Raises
-        ------
-        DiffieHellmanStateError
-            If no key pair has been generated or the peer public key
-            is missing.
-        InvalidPublicKey
-            If the peer public key does not belong to the expected subgroup.
+        Args:
+            peer_public_key: The peer's public value, or ``None`` if it has
+                not been received.
+
+        Returns:
+            The shared secret peer^x mod p.
+
+        Raises:
+            DiffieHellmanStateError: If no key pair has been generated or the
+                peer public key is missing.
+            InvalidPublicKey: If the peer public key does not belong to the
+                expected subgroup.
         """
         if peer_public_key is None:
             raise DiffieHellmanStateError("Public Key from other participant is None.")

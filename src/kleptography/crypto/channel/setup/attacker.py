@@ -1,3 +1,10 @@
+"""The attacker of an encrypted channel whose Alice is the compromised device.
+
+It sees only the public transcript. Each consecutive pair of Alice's public
+keys leaks her exponent of the later session, which gives the session key
+and every message of that session. Session 1 stays confidential.
+"""
+
 from __future__ import annotations
 
 from kleptography.crypto.aead.aes_gcm import decrypt
@@ -32,6 +39,27 @@ def intercept_channel(
     attacker: YoungYungAttacker,
     configuration: YoungYungConfiguration,
 ) -> ChannelInterception:
+    """Read every session of a channel that the transcript allows.
+
+    Session 1 is never recoverable. For each later session the attacker
+    recovers Alice's exponent from her previous and current public keys,
+    computes the shared secret and the session key, and decrypts the
+    messages. A session whose recovery fails is reported, not raised.
+
+    Args:
+        transcript: The public transcript of the channel.
+        attacker: The attacker who built the SETUP.
+        configuration: The configuration embedded in Alice's device.
+
+    Returns:
+        The interception of every session, with its intermediate values.
+
+    Raises:
+        InvalidSetupConfiguration: If the configuration is for another group
+            or does not embed this attacker's public key.
+        DiffieHellmanParametersMismatch: If the transcript uses another group.
+        InvalidPublicKey: If a public key of the transcript is invalid.
+    """
     # Checked up front, so the result does not depend on the number of sessions.
     if (
         configuration.parameters != attacker.parameters
@@ -70,6 +98,7 @@ def _intercept_session(
     attacker: YoungYungAttacker,
     configuration: YoungYungConfiguration,
 ) -> InterceptedSession:
+    """Intercept one session from the previous and current transcripts."""
     parameters = configuration.parameters
     validate_public_key(
         current.bob_public_key,
@@ -111,6 +140,7 @@ def _intercept_session(
 
 
 def _decrypt_message(message: TranscriptMessage, key: bytes) -> InterceptedMessage:
+    """Decrypt one message, or keep it unreadable if the tag rejects it."""
     # A matching candidate is a_i itself (g has order q), so the key is right.
     # The tag can still reject a message whose ciphertext was tampered with.
     try:
@@ -126,6 +156,7 @@ def _not_recovered(
     *,
     candidates: SetupCandidates | None = None,
 ) -> InterceptedSession:
+    """Build a session that reveals nothing, with its outcome."""
     return InterceptedSession(
         transcript=session,
         outcome=outcome,

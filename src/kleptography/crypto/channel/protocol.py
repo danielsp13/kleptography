@@ -1,5 +1,4 @@
-"""
-The encrypted channel: several sessions in a row between the same two parties.
+"""The encrypted channel: several sessions in a row between the same two parties.
 
 Every session uses fresh ephemeral DH keys, so with honest participants the
 session keys are independent: learning one of them reveals nothing about the
@@ -23,8 +22,7 @@ def run_channel(
     bob: DiffieHellmanParticipant,
     sessions: Sequence[Sequence[PlainMessage]],
 ) -> ChannelRun:
-    """
-    Run the channel: one session per entry of ``sessions``, in order.
+    """Run the channel: one session per entry of ``sessions``, in order.
 
     Args:
         alice: The participant playing Alice. A compromised device can be

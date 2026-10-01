@@ -1,3 +1,9 @@
+"""The hash function H that turns the SETUP value z into an exponent.
+
+The paper leaves H abstract. This implementation instantiates it with
+SHAKE-256 and a domain separation tag, reduced to an exponent in [1, q - 1].
+"""
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -12,12 +18,24 @@ _EXTRA_BYTES = 8
 
 
 class SetupHashFunction(Protocol):
+    """A function H that maps a group element to a private exponent."""
+
     def __call__(
         self,
         value: int,
         *,
         parameters: DiffieHellmanParameters,
-    ) -> int: ...
+    ) -> int:
+        """Map ``value`` to an exponent in [1, q - 1].
+
+        Args:
+            value: A group element z, with 1 <= z < p.
+            parameters: The Diffie-Hellman group of the SETUP.
+
+        Returns:
+            The exponent H(z).
+        """
+        ...
 
 
 def hash_to_exponent(
@@ -25,6 +43,22 @@ def hash_to_exponent(
     *,
     parameters: DiffieHellmanParameters,
 ) -> int:
+    """Hash a group element to a private exponent (the paper's H).
+
+    Computes SHAKE-256 over the domain tag ``b"young-yung-setup-H"`` followed
+    by ``value`` encoded big-endian with the byte length of p, with 8 bytes
+    more output than q needs, and reduces it as ``digest mod (q - 1) + 1``.
+
+    Args:
+        value: A group element z, with 1 <= z < p.
+        parameters: The Diffie-Hellman group of the SETUP.
+
+    Returns:
+        An exponent in [1, q - 1], with a bias below 2^-64.
+
+    Raises:
+        ValueError: If ``value`` is outside [1, p - 1].
+    """
     if not 1 <= value < parameters.prime:
         raise ValueError("value is outside [1, p - 1]")
 

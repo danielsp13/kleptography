@@ -1,3 +1,5 @@
+"""The 8192-bit FFDHE8192 group of RFC 7919, Appendix A."""
+
 from __future__ import annotations
 
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
@@ -104,7 +106,11 @@ _FFDHE8192_SUBGROUP_ORDER = int(
 
 
 def ffdhe8192() -> DiffieHellmanParameters:
-    """Return the standardized RFC 7919 FFDHE8192 group."""
+    """Return the standardized RFC 7919 FFDHE8192 group.
+
+    Returns:
+        The validated FFDHE8192 parameters, with g = 2.
+    """
     return DiffieHellmanParameters.from_standard(
         prime=_FFDHE8192_PRIME,
         generator=_FFDHE8192_GENERATOR,

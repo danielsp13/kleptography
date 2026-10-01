@@ -1,5 +1,4 @@
-"""
-One-step key derivation (NIST SP 800-56C Rev. 2, Section 4.1) with SHA-256.
+"""One-step key derivation (NIST SP 800-56C Rev. 2, Section 4.1) with SHA-256.
 
 A Diffie-Hellman shared secret is a group element, not a uniformly random
 string of bits, so it is not used directly as a symmetric key. The one-step
@@ -32,8 +31,7 @@ OTHER_INFO = b"kleptography-encrypted-channel"
 
 
 def derive_key(shared_secret: int, *, secret_length: int) -> KeyDerivation:
-    """
-    Derive a 32-byte key from a shared secret.
+    """Derive a 32-byte key from a shared secret.
 
     Args:
         shared_secret: The shared secret, a positive integer.

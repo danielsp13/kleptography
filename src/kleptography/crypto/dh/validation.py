@@ -1,5 +1,4 @@
-"""
-Validation helpers for finite-field Diffie-Hellman.
+"""Validation helpers for finite-field Diffie-Hellman.
 
 This module contains the mathematical validation rules for Diffie-Hellman
 parameters, private exponents, and public values.
@@ -24,20 +23,23 @@ def validate_parameters(
     generator: int,
     subgroup_order: int,
 ) -> None:
-    """
-    Validate a finite-field Diffie-Hellman parameter set.
+    """Validate a finite-field Diffie-Hellman parameter set.
 
     The educational DH implementation uses a safe-prime subgroup of prime
     order q, where:
 
         p = 2q + 1
 
-    and `generator` has order q modulo p.
+    and ``generator`` has order q modulo p.
 
-    Raises
-    ------
-    InvalidDiffieHellmanParameters
-        If the parameters do not satisfy the required invariants.
+    Args:
+        prime: The safe prime p.
+        generator: The generator g of the subgroup of order q.
+        subgroup_order: The prime order q of the subgroup.
+
+    Raises:
+        InvalidDiffieHellmanParameters: If the parameters do not satisfy the
+            required invariants.
     """
     if prime <= 2:
         raise InvalidDiffieHellmanParameters("DH prime must be greater than 2.")
@@ -68,8 +70,7 @@ def validate_private_key(
     *,
     subgroup_order: int,
 ) -> None:
-    """
-    Validate a Diffie-Hellman private exponent.
+    """Validate a Diffie-Hellman private exponent.
 
     The private exponent must satisfy:
 
@@ -77,10 +78,12 @@ def validate_private_key(
 
     where q is the order of the subgroup.
 
-    Raises
-    ------
-    InvalidPrivateKey
-        If the private exponent is outside the valid range.
+    Args:
+        private_key: The private exponent x.
+        subgroup_order: The prime order q of the subgroup.
+
+    Raises:
+        InvalidPrivateKey: If the private exponent is outside the valid range.
     """
     if not 1 <= private_key < subgroup_order:
         raise InvalidPrivateKey(
@@ -94,8 +97,7 @@ def validate_public_key(
     prime: int,
     subgroup_order: int,
 ) -> None:
-    """
-    Validate a peer's Diffie-Hellman public value.
+    """Validate a peer's Diffie-Hellman public value.
 
     A valid public value must be a non-identity element of the subgroup
     of order q modulo p. Therefore:
@@ -106,11 +108,14 @@ def validate_public_key(
 
         public_key^q mod p = 1
 
-    Raises
-    ------
-    InvalidPublicKey
-        If the public value is outside the valid range or does not belong
-        to the expected subgroup.
+    Args:
+        public_key: The public value received from the peer.
+        prime: The safe prime p.
+        subgroup_order: The prime order q of the subgroup.
+
+    Raises:
+        InvalidPublicKey: If the public value is outside the valid range or
+            does not belong to the expected subgroup.
     """
     if not 1 < public_key < prime:
         raise InvalidPublicKey("DH public key must satisfy 1 < public_key < prime.")

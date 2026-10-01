@@ -1,6 +1,4 @@
-"""
-Exceptions raised by the Diffie-Hellman implementation.
-"""
+"""Exceptions raised by the Diffie-Hellman implementation."""
 
 from __future__ import annotations
 

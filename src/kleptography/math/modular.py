@@ -1,6 +1,4 @@
-"""
-Utility functions for modular arithmetic.
-"""
+"""Utility functions for modular arithmetic."""
 
 from __future__ import annotations
 
@@ -8,8 +6,7 @@ from math import gcd
 
 
 def mod_pow(base: int, exponent: int, modulus: int) -> int:
-    """
-    Compute the modular exponentiation of an integer.
+    """Compute the modular exponentiation of an integer.
 
     Returns the remainder of ``base`` raised to ``exponent`` modulo
     ``modulus``. This function is a thin wrapper around Python's built-in
@@ -34,8 +31,7 @@ def mod_pow(base: int, exponent: int, modulus: int) -> int:
 
 
 def mod_inverse(value: int, modulus: int) -> int:
-    """
-    Compute the multiplicative inverse of an integer modulo a modulus.
+    """Compute the multiplicative inverse of an integer modulo a modulus.
 
     An inverse exists if and only if ``value`` and ``modulus`` are coprime.
     The returned integer ``inverse`` satisfies
@@ -62,8 +58,7 @@ def mod_inverse(value: int, modulus: int) -> int:
 
 
 def is_coprime(a: int, b: int) -> bool:
-    """
-    Determine whether two integers are coprime.
+    """Determine whether two integers are coprime.
 
     Two integers are coprime if their greatest common divisor is equal to
     one.

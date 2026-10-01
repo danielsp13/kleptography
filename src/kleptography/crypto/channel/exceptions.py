@@ -1,6 +1,4 @@
-"""
-Exceptions raised by the encrypted channel implementation.
-"""
+"""Exceptions raised by the encrypted channel implementation."""
 
 from __future__ import annotations
 

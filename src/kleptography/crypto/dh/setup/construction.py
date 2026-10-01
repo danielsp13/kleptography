@@ -1,3 +1,10 @@
+"""The SETUP equations of Young and Yung (EUROCRYPT '97) for Diffie-Hellman.
+
+All exponents are reduced modulo q, and division modulo p is done with the
+modular inverse. These are pure functions: the device and the attacker
+classes call them.
+"""
+
 from __future__ import annotations
 
 from kleptography.crypto.dh.exceptions import InvalidPrivateKey
@@ -13,6 +20,20 @@ def compute_z(
     correction_bit: int,
     configuration: YoungYungConfiguration,
 ) -> int:
+    """Compute the device's value z = g^(c1 - W*t) * Y^(-a*c1 - b) mod p.
+
+    Args:
+        previous_private_key: The previous exponent c1.
+        correction_bit: The bit t, 0 or 1.
+        configuration: The SETUP configuration of the device.
+
+    Returns:
+        The group element z.
+
+    Raises:
+        InvalidPrivateKey: If c1 is outside [1, q - 1].
+        ValueError: If t is not 0 or 1.
+    """
     validate_private_key(
         previous_private_key, subgroup_order=configuration.parameters.subgroup_order
     )
@@ -45,6 +66,21 @@ def derive_setup(
     correction_bit: int,
     configuration: YoungYungConfiguration,
 ) -> SetupDerivation:
+    """Derive the next exponent c2 = H(z) and keep every intermediate value.
+
+    Args:
+        previous_private_key: The previous exponent c1.
+        correction_bit: The bit t, 0 or 1.
+        configuration: The SETUP configuration of the device.
+
+    Returns:
+        The derivation (c1, t, z, c2).
+
+    Raises:
+        InvalidPrivateKey: If c1 is outside [1, q - 1], or H returns an
+            exponent outside that range.
+        ValueError: If t is not 0 or 1.
+    """
     z = compute_z(
         previous_private_key,
         correction_bit=correction_bit,
@@ -68,6 +104,20 @@ def derive_private_key(
     correction_bit: int,
     configuration: YoungYungConfiguration,
 ) -> int:
+    """Derive the next exponent c2 = H(z).
+
+    Args:
+        previous_private_key: The previous exponent c1.
+        correction_bit: The bit t, 0 or 1.
+        configuration: The SETUP configuration of the device.
+
+    Returns:
+        The exponent c2.
+
+    Raises:
+        InvalidPrivateKey: If c1 or c2 is outside [1, q - 1].
+        ValueError: If t is not 0 or 1.
+    """
     return derive_setup(
         previous_private_key,
         correction_bit=correction_bit,
@@ -80,6 +130,21 @@ def compute_r(
     *,
     configuration: YoungYungConfiguration,
 ) -> int:
+    """Compute the attacker's value r = m1^a * g^b mod p.
+
+    Since r^X = Y^(a*c1 + b), r is the attacker's side of the mask that the
+    device applied to z.
+
+    Args:
+        first_public_key: The first public key m1.
+        configuration: The SETUP configuration of the device.
+
+    Returns:
+        The group element r.
+
+    Raises:
+        InvalidPublicKey: If m1 is not a public value of the group.
+    """
     prime = configuration.parameters.prime
     subgroup_order = configuration.parameters.subgroup_order
 
@@ -108,6 +173,20 @@ def recover_z_candidates(
     attacker_private_key: int,
     configuration: YoungYungConfiguration,
 ) -> tuple[int, int]:
+    """Recover the candidates z1 = m1 / r^X and z2 = z1 / g^W modulo p.
+
+    Args:
+        first_public_key: The first public key m1.
+        attacker_private_key: The attacker's private key X.
+        configuration: The SETUP configuration of the device.
+
+    Returns:
+        The candidates (z1, z2), for t = 0 and t = 1.
+
+    Raises:
+        InvalidPublicKey: If m1 is not a public value of the group.
+        InvalidPrivateKey: If X is outside [1, q - 1].
+    """
     prime = configuration.parameters.prime
     subgroup_order = configuration.parameters.subgroup_order
 

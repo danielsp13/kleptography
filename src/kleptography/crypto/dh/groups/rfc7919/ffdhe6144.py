@@ -1,3 +1,5 @@
+"""The 6144-bit FFDHE6144 group of RFC 7919, Appendix A."""
+
 from __future__ import annotations
 
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
@@ -82,7 +84,11 @@ _FFDHE6144_SUBGROUP_ORDER = int(
 
 
 def ffdhe6144() -> DiffieHellmanParameters:
-    """Return the standardized RFC 7919 FFDHE6144 group."""
+    """Return the standardized RFC 7919 FFDHE6144 group.
+
+    Returns:
+        The validated FFDHE6144 parameters, with g = 2.
+    """
     return DiffieHellmanParameters.from_standard(
         prime=_FFDHE6144_PRIME,
         generator=_FFDHE6144_GENERATOR,

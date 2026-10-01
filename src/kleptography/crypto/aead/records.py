@@ -1,6 +1,4 @@
-"""
-Value objects for authenticated encryption.
-"""
+"""Value objects for authenticated encryption."""
 
 from __future__ import annotations
 
@@ -17,8 +15,7 @@ TAG_SIZE = 16
 
 @dataclass(frozen=True, slots=True)
 class EncryptedMessage:
-    """
-    A message protected with AES-256-GCM, as it travels over the channel.
+    """A message protected with AES-256-GCM, as it travels over the channel.
 
     Every field is public: an eavesdropper sees the nonce, the ciphertext and
     the tag. Confidentiality and integrity rely only on the secrecy of the key.

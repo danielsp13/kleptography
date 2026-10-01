@@ -1,5 +1,4 @@
-"""
-One session of the encrypted channel: ephemeral DH, key derivation, messages.
+"""One session of the encrypted channel: ephemeral DH, key derivation, messages.
 
 A session follows the usual pattern of real secure channels:
 
@@ -43,8 +42,7 @@ def run_session(
     *,
     number: int,
 ) -> ChannelSession:
-    """
-    Run one session of the channel and exchange its messages.
+    """Run one session of the channel and exchange its messages.
 
     Both participants always get a fresh key pair through
     ``generate_keypair()`` before the exchange (ephemeral DH), replacing any
@@ -105,6 +103,7 @@ def _deliver(
     message: PlainMessage,
     derivations: dict[Actor, KeyDerivation],
 ) -> ChannelMessage:
+    """Encrypt a message under the sender's key and decrypt it under the recipient's."""
     encrypted = encrypt(
         derivations[message.sender].key,
         message.text.encode("ascii"),

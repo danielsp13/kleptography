@@ -1,5 +1,4 @@
-"""
-Value objects for the encrypted channel.
+"""Value objects for the encrypted channel.
 
 There are two views of the same communication:
 
@@ -35,8 +34,7 @@ PARTIES = (Actor.ALICE, Actor.BOB)
 
 @dataclass(frozen=True, slots=True)
 class PlainMessage:
-    """
-    A message that one party wants to send, before encryption.
+    """A message that one party wants to send, before encryption.
 
     Messages are short, human-readable texts: printable ASCII (letters,
     digits, punctuation and spaces), between 1 and 140 characters.
@@ -72,8 +70,7 @@ class PlainMessage:
 
 @dataclass(frozen=True, slots=True)
 class TranscriptMessage:
-    """
-    A message as it travels over the network: only its sender is visible.
+    """A message as it travels over the network: only its sender is visible.
 
     Attributes:
         sender: ``Actor.ALICE`` or ``Actor.BOB``.
@@ -97,8 +94,7 @@ class TranscriptMessage:
 
 @dataclass(frozen=True, slots=True)
 class SessionTranscript:
-    """
-    The public view of one session: the DH public keys and the ciphertexts.
+    """The public view of one session: the DH public keys and the ciphertexts.
 
     Attributes:
         number: The position of the session in the channel, starting at 1.
@@ -121,8 +117,7 @@ class SessionTranscript:
 
 @dataclass(frozen=True, slots=True)
 class ChannelTranscript:
-    """
-    The public view of the whole channel: what an eavesdropper records.
+    """The public view of the whole channel: what an eavesdropper records.
 
     The group is public too: it is agreed before any session starts.
 
@@ -144,8 +139,7 @@ class ChannelTranscript:
 
 @dataclass(frozen=True, slots=True)
 class ChannelMessage:
-    """
-    The private view of one message: plaintext, ciphertext and what arrived.
+    """The private view of one message: plaintext, ciphertext and what arrived.
 
     Attributes:
         sender: ``Actor.ALICE`` or ``Actor.BOB``.
@@ -183,8 +177,7 @@ class ChannelMessage:
 
 @dataclass(frozen=True, slots=True)
 class ChannelSession:
-    """
-    The private view of one session: ephemeral DH, key derivation and messages.
+    """The private view of one session: ephemeral DH, key derivation and messages.
 
     Each party derives its own key from its own shared secret, and each
     recipient decrypts with its own key, so a successful session shows that
@@ -232,8 +225,7 @@ class ChannelSession:
 
 @dataclass(frozen=True, slots=True)
 class ChannelRun:
-    """
-    The private view of the whole channel, from which the transcript is built.
+    """The private view of the whole channel, from which the transcript is built.
 
     Attributes:
         parameters: The DH group used by every session.
@@ -260,15 +252,18 @@ class ChannelRun:
 
 
 def _validate_sender(sender: Actor) -> None:
+    """Check that the sender is Alice or Bob."""
     if not isinstance(sender, Actor) or sender not in PARTIES:
         raise InvalidChannelMessage("The sender must be Alice or Bob.")
 
 
 def _peer_of(sender: Actor) -> Actor:
+    """Return the other party of the channel."""
     return Actor.BOB if sender is Actor.ALICE else Actor.ALICE
 
 
 def _validate_session_number(number: int) -> None:
+    """Check that a session number is an integer of at least 1."""
     if isinstance(number, bool) or not isinstance(number, int) or number < 1:
         raise InvalidChannelSessions("Session numbers start at 1.")
 
@@ -276,6 +271,7 @@ def _validate_session_number(number: int) -> None:
 def _validate_session_sequence(
     sessions: Sequence[SessionTranscript] | Sequence[ChannelSession],
 ) -> None:
+    """Check that there are sessions and they are numbered 1, 2, ... in order."""
     if not sessions:
         raise InvalidChannelSessions("A channel needs at least one session.")
     numbers = [session.number for session in sessions]

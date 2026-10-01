@@ -1,5 +1,4 @@
-"""
-AES-256-GCM authenticated encryption (NIST SP 800-38D).
+"""AES-256-GCM authenticated encryption (NIST SP 800-38D).
 
 GCM combines AES in counter mode, which gives confidentiality, with the GHASH
 authenticator, which gives integrity: a ciphertext decrypts only under the
@@ -31,8 +30,7 @@ KEY_SIZE = 32
 
 
 def generate_nonce() -> bytes:
-    """
-    Generate a fresh random nonce.
+    """Generate a fresh random nonce.
 
     The nonce is not secret: it travels next to the ciphertext. It only needs
     to be unique under a given key, and 96 random bits make a repetition
@@ -50,8 +48,7 @@ def encrypt(
     *,
     nonce: bytes | None = None,
 ) -> EncryptedMessage:
-    """
-    Encrypt and authenticate a message with AES-256-GCM.
+    """Encrypt and authenticate a message with AES-256-GCM.
 
     Args:
         key: The 32-byte symmetric key.
@@ -84,8 +81,7 @@ def encrypt(
 
 
 def decrypt(key: bytes, message: EncryptedMessage) -> bytes:
-    """
-    Verify and decrypt a message protected with AES-256-GCM.
+    """Verify and decrypt a message protected with AES-256-GCM.
 
     The tag is checked before any plaintext is returned, so a wrong key and a
     tampered message fail in the same way.
@@ -115,5 +111,6 @@ def decrypt(key: bytes, message: EncryptedMessage) -> bytes:
 
 
 def _validate_key(key: bytes) -> None:
+    """Check that the key is a 32-byte AES-256 key."""
     if not isinstance(key, bytes) or len(key) != KEY_SIZE:
         raise InvalidAeadKey(f"The key must be {KEY_SIZE} bytes (AES-256).")

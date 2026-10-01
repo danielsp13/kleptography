@@ -1,3 +1,5 @@
+"""The 2048-bit FFDHE2048 group of RFC 7919, Appendix A."""
+
 from __future__ import annotations
 
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
@@ -40,7 +42,11 @@ _FFDHE2048_SUBGROUP_ORDER = int(
 
 
 def ffdhe2048() -> DiffieHellmanParameters:
-    """Return the standardized RFC 7919 FFDHE2048 group."""
+    """Return the standardized RFC 7919 FFDHE2048 group.
+
+    Returns:
+        The validated FFDHE2048 parameters, with g = 2.
+    """
     return DiffieHellmanParameters.from_standard(
         prime=_FFDHE2048_PRIME,
         generator=_FFDHE2048_GENERATOR,

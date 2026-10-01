@@ -1,3 +1,5 @@
+"""An observer that records protocol events as an ordered timeline."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -24,7 +26,13 @@ class ProtocolExecutionContext(OperationObserver):
         actor: Actor,
         data: Mapping[str, object] | None = None,
     ) -> None:
-        """Record an observed operation as a protocol event."""
+        """Record an observed operation as a protocol event.
+
+        Args:
+            event_type: The semantic step that took place.
+            actor: The entity responsible for the step.
+            data: The values involved in the step, if any.
+        """
         self._events.append(
             ProtocolEvent(
                 sequence=len(self._events) + 1,
