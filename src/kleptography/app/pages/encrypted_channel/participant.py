@@ -21,6 +21,7 @@ from kleptography.app.components.encrypted_channel import (
     render_component_channel_session,
 )
 from kleptography.app.components.protocol import ValueDisplay
+from kleptography.app.components.young_yung_setup import Backdoor
 from kleptography.app.content.encrypted_channel import (
     DEFAULT_MESSAGES,
     build_device_choice_content,
@@ -30,7 +31,6 @@ from kleptography.app.content.encrypted_channel import (
 )
 from kleptography.app.content.numbers import NumberFormat
 from kleptography.app.pages.encrypted_channel.experiment import (
-    Backdoor,
     run_experiment,
 )
 from kleptography.app.pages.encrypted_channel.state import (
@@ -42,7 +42,6 @@ from kleptography.app.pages.encrypted_channel.state import (
 from kleptography.crypto.channel.exceptions import InvalidChannelMessage
 from kleptography.crypto.channel.records import MAX_MESSAGE_LENGTH, PlainMessage
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
-from kleptography.crypto.dh.setup.attacker import YoungYungAttacker
 from kleptography.crypto.dh.tracing.events import Actor
 
 # The channel accepts any number of sessions; the UI keeps it readable.
@@ -83,8 +82,7 @@ def _backdoor_for(parameters: DiffieHellmanParameters) -> Backdoor:
     # is regenerated only when the group changes.
     backdoor: Backdoor | None = st.session_state.get(BACKDOOR)
     if backdoor is None or backdoor.attacker.parameters != parameters:
-        attacker = YoungYungAttacker.generate(parameters)
-        backdoor = Backdoor(attacker, attacker.generate_configuration())
+        backdoor = Backdoor.generate(parameters)
         st.session_state[BACKDOOR] = backdoor
     return backdoor
 

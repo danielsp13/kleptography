@@ -9,25 +9,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from kleptography.app.components.young_yung_setup import SetupRun
+from kleptography.app.components.young_yung_setup import Backdoor, SetupRun
 from kleptography.app.content.young_yung_setup import summarize_exchange
 from kleptography.crypto.dh.parameters import DiffieHellmanParameters
 from kleptography.crypto.dh.participant import DiffieHellmanParticipant
 from kleptography.crypto.dh.protocol import perform_key_exchange
-from kleptography.crypto.dh.setup.attacker import YoungYungAttacker
-from kleptography.crypto.dh.setup.configuration import YoungYungConfiguration
 from kleptography.crypto.dh.setup.participant import (
     YoungYungDiffieHellmanParticipant,
 )
 from kleptography.crypto.dh.tracing.context import ProtocolExecutionContext
-
-
-@dataclass(frozen=True, slots=True)
-class Backdoor:
-    """The attacker and the SETUP configuration it embedded in the device."""
-
-    attacker: YoungYungAttacker
-    configuration: YoungYungConfiguration
 
 
 @dataclass(frozen=True, slots=True)

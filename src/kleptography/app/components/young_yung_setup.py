@@ -41,6 +41,32 @@ SETUP_STEP_COUNT = len(SETUP_STEP_DEFINITIONS)
 
 
 @dataclass(frozen=True, slots=True)
+class Backdoor:
+    """The attacker and the SETUP configuration it embeds in a device.
+
+    Attributes:
+        attacker: The attacker, holding the private key ``X``.
+        configuration: The SETUP the attacker embeds in the device.
+    """
+
+    attacker: YoungYungAttacker
+    configuration: YoungYungConfiguration
+
+    @classmethod
+    def generate(cls, parameters: DiffieHellmanParameters) -> Backdoor:
+        """Generate a new attacker and its SETUP configuration for a group.
+
+        Args:
+            parameters: The group of the device.
+
+        Returns:
+            A fresh attacker key pair and fresh SETUP constants.
+        """
+        attacker = YoungYungAttacker.generate(parameters)
+        return cls(attacker, attacker.generate_configuration())
+
+
+@dataclass(frozen=True, slots=True)
 class SetupRun:
     """An executed SETUP experiment.
 
