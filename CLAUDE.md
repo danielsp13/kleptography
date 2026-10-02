@@ -1182,6 +1182,9 @@ uv run ty check                           # type check
 uv run streamlit run src/kleptography/app/main.py   # launch the app
 ```
 
+The app is deployed on Streamlit Community Cloud at
+`https://dpr-kleptography.streamlit.app/` (linked from the README).
+
 **Definition of done:** `pytest`, `ruff check .`, `ruff format --check .`
 and `ty check` all pass. CI (`.github/workflows/ci.yml`) runs them on every
 push, with tests on Python 3.12, 3.13 and 3.14. Pre-commit runs Ruff and ty
