@@ -609,7 +609,9 @@ render_page_encrypted_channel()
          2 · transcript: render_component_transcript (one tab per session)
          3 · workbench, session selector ch_attacker_session:
              step 1 candidates from experiment.interception (never recomputed):
-               render_component_recovery (both rejected with an honest device)
+               render_component_recovery (both rejected with an honest device);
+               session 1 shows only step 1 and its callout (no a_1, so steps
+               2–4 and their fields are not rendered)
              step 2 a_i → s_i, step 3 s_i → K_i (derive_key),
              step 4 K_i (hex) + message → decrypt, or the tag failure only
                (no unauthenticated decryption is ever shown)
