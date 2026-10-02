@@ -96,6 +96,10 @@ def render_workbench(
 
     with render_component_step(1, recover_step):
         recovered, candidate_keys = _render_recovery_step(experiment, number, display)
+    if intercepted.candidates is None:
+        # Session 1: the SETUP leaks nothing about a_1, so the steps that
+        # would start from it are not offered at all.
+        return
 
     with render_component_step(2, secret_step):
         shared_secret = _render_shared_secret_step(

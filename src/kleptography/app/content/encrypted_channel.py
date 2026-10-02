@@ -419,25 +419,37 @@ def workbench_step_definitions(number: int) -> tuple[StepDefinition, ...]:
         The recovery, shared secret, key derivation and decryption steps.
     """
     i = number
-    previous = f"A_{{{i - 1}}}" if i > 1 else "A_{0}"
-    return (
-        StepDefinition(
-            title=f"Recover Alice's private key $a_{{{i}}}$",
-            explanation=(
-                f"Pair the public key of this session, $A_{{{i}}}$, with the "
-                f"one of the previous session, ${previous}$. With $X$, the "
-                "attacker removes the mask the device put on $z$, tries both "
-                "values of the hidden bit $t$ and keeps the candidate whose "
-                f"public key reproduces $A_{{{i}}}$."
-            ),
-            formula=(
-                rf"r = {previous}^{{\alpha}} g^{{\beta}},\quad "
-                rf"z_1 = \frac{{{previous}}}{{r^{{X}}}},\quad "
-                rf"z_2 = \frac{{z_1}}{{g^{{W}}}},\quad "
-                rf"\hat{{a}}_k = H(z_k),\quad g^{{\hat{{a}}_k}} \overset{{?}}{{=}} "
-                rf"A_{{{i}}}"
-            ),
+    previous = f"A_{{{i - 1}}}"
+    recover_step = StepDefinition(
+        title=f"Recover Alice's private key $a_{{{i}}}$",
+        explanation=(
+            f"Pair the public key of this session, $A_{{{i}}}$, with the "
+            f"one of the previous session, ${previous}$. With $X$, the "
+            "attacker removes the mask the device put on $z$, tries both "
+            "values of the hidden bit $t$ and keeps the candidate whose "
+            f"public key reproduces $A_{{{i}}}$."
         ),
+        formula=(
+            rf"r = {previous}^{{\alpha}} g^{{\beta}},\quad "
+            rf"z_1 = \frac{{{previous}}}{{r^{{X}}}},\quad "
+            rf"z_2 = \frac{{z_1}}{{g^{{W}}}},\quad "
+            rf"\hat{{a}}_k = H(z_k),\quad g^{{\hat{{a}}_k}} \overset{{?}}{{=}} "
+            rf"A_{{{i}}}"
+        ),
+    )
+    if i == 1:
+        recover_step = StepDefinition(
+            title="Recover Alice's private key $a_{1}$",
+            explanation=(
+                "The recovery pairs each public key with the previous one, and "
+                "$A_1$ has none: the device drew $a_1$ at random, as an honest "
+                "one would. The only way to $a_1$ is the discrete logarithm of "
+                "$A_1$, the same problem Eve faces."
+            ),
+            formula=r"a_1 \xleftarrow{\$} [1,\ q - 1],\quad A_1 = g^{a_1} \bmod p",
+        )
+    return (
+        recover_step,
         StepDefinition(
             title=f"Compute the shared secret $s_{{{i}}}$",
             explanation=(
@@ -516,9 +528,11 @@ def build_first_session_content() -> str:
         content=(
             "Session 1 has no previous public key to pair with, so there is "
             "nothing to unmask: its key was drawn at random even by a "
-            "compromised device. This is the (1,2)-leakage at work. You can "
-            "still type guesses in the next steps and watch AES-GCM reject "
-            "them."
+            "compromised device. This is the (1,2)-leakage at work. Without "
+            "<em>a</em><sub>1</sub> there is no shared secret, no session key "
+            "and nothing to decrypt, so the workbench stops here: like Eve, "
+            "you keep only the ciphertexts of the transcript. Pick a later "
+            "session to read it."
         ),
         title="Nothing to recover in session 1",
     ).build()
