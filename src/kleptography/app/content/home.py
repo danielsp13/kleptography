@@ -1,5 +1,7 @@
 """Educational content of the home page."""
 
+from __future__ import annotations
+
 from kleptography.app.content.callouts import CalloutComposer
 from kleptography.app.content.composer import ContentComposer
 
@@ -113,7 +115,7 @@ def build_home_content() -> str:
     content.h2("Experimental methodology")
 
     content.paragraph(
-        "Each case study will follow the same educational progression. "
+        "Each case study follows the same educational progression. "
         "The intention is to make the difference between the legitimate "
         "and kleptographic constructions observable rather than treating "
         "the attack as a black-box result."
@@ -138,7 +140,7 @@ def build_home_content() -> str:
 
     content.paragraph(
         "The experiments are intended to be reproducible and inspectable. "
-        "Whenever possible, the implementation will expose the parameters, "
+        "Whenever possible, the implementation exposes the parameters, "
         "intermediate values, and relationships necessary to understand "
         "why the construction behaves as observed."
     )
@@ -148,7 +150,7 @@ def build_home_content() -> str:
     content.h2("First case study: Diffie-Hellman")
 
     content.paragraph(
-        "The first case study will focus on the ",
+        "The first case study focuses on the ",
         content.bold("Diffie-Hellman key exchange"),
         ". This construction provides a useful starting point because its "
         "security is closely connected to the discrete logarithm problem, "
@@ -157,10 +159,11 @@ def build_home_content() -> str:
     )
 
     content.paragraph(
-        "The study will first establish how an ordinary Diffie-Hellman "
+        "The study first establishes how an ordinary Diffie-Hellman "
         "exchange works and why the participants can derive a shared secret. "
-        "The subsequent experiment will examine how the construction can be "
-        "modified to incorporate a hidden trapdoor mechanism."
+        "The following experiments examine how the construction can be "
+        "modified to incorporate a hidden trapdoor mechanism, and what that "
+        "trapdoor gives away once the exchange protects a real channel."
     )
 
     content.paragraph(
@@ -177,15 +180,25 @@ def build_home_content() -> str:
 
     content.bullet_list(
         [
-            "Establish the mathematical and implementation foundations.",
-            "Implement the reference Diffie-Hellman construction.",
-            "Study and implement the corresponding Young-Yung construction.",
-            "Build interactive experiments around the construction.",
-            "Expose the relevant intermediate values and attacker knowledge.",
-            "Document the security assumptions and limitations.",
             (
-                "Use the same methodology to study additional cryptographic "
-                "constructions."
+                ":green-badge[Done] Establish the mathematical and "
+                "implementation foundations."
+            ),
+            ":green-badge[Done] Implement the reference Diffie-Hellman construction.",
+            (
+                ":green-badge[Done] Study and implement the corresponding "
+                "Young-Yung construction."
+            ),
+            ":green-badge[Done] Build interactive experiments around the construction.",
+            (
+                ":green-badge[Done] Expose the relevant intermediate values and "
+                "attacker knowledge."
+            ),
+            ":green-badge[Done] Document the security assumptions and limitations.",
+            (
+                ":orange-badge[Next] Use the same methodology to study "
+                "additional cryptographic constructions, such as RSA key "
+                "generation and post-quantum schemes."
             ),
         ]
     )

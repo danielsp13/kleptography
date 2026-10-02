@@ -1,5 +1,7 @@
 """The home page: header, section cards, introduction and footer."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from kleptography.app.components.footer import render_component_footer

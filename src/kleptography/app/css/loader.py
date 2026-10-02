@@ -1,5 +1,7 @@
 """Loading of the stylesheets bundled with the application."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 _CSS_DIR = Path(__file__).resolve().parent / "styles"

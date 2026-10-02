@@ -1,5 +1,7 @@
 """Injection of raw HTML, with optional CSS, into a Streamlit page."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 

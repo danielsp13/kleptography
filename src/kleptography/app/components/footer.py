@@ -1,6 +1,8 @@
 """The site footer: version, author and links."""
 
-from kleptography import __version__
+from __future__ import annotations
+
+from kleptography import __release_date__, __version__
 from kleptography.app.css.loader import load_css
 from kleptography.app.html.loader import render_template
 from kleptography.app.html.renderer import render_html
@@ -13,8 +15,8 @@ def render_component_footer() -> None:
         title="Kleptography",
         subtitle="Cryptography against cryptography",
         version=__version__,
-        release_date="2026-10-01",
-        year="2026",
+        release_date=__release_date__,
+        year=__release_date__[:4],
         author_name="Daniel Pérez Ruiz",
         repository_url="https://github.com/danielsp13/kleptography/",
         documentation_url="https://github.com/danielsp13/kleptography/tree/main/docs",

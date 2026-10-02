@@ -1,5 +1,7 @@
 """Entry point of the Streamlit application."""
 
+from __future__ import annotations
+
 import streamlit as st
 
 from kleptography.app.navigation import all_pages
