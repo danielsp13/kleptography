@@ -10,6 +10,10 @@ An interactive lab that shows how a cryptographic implementation can be
 backdoored so that its output still looks perfectly normal, and how much an
 attacker gains from it.
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://dpr-kleptography.streamlit.app/)
+
+**[Try the live demo →](https://dpr-kleptography.streamlit.app/)**
+
 [![CI](https://github.com/danielsp13/kleptography/actions/workflows/ci.yml/badge.svg)](https://github.com/danielsp13/kleptography/actions/workflows/ci.yml)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-3776AB?logo=python&logoColor=white)
@@ -112,6 +116,10 @@ computational Diffie-Hellman problem. The *Formulae* tab of the SETUP
 section walks through the complete proof.
 
 ## Quick start
+
+The app runs online at
+[dpr-kleptography.streamlit.app](https://dpr-kleptography.streamlit.app/),
+with nothing to install. To run it locally instead:
 
 Requirements: Python 3.12 or newer and [uv](https://docs.astral.sh/uv/).
 
