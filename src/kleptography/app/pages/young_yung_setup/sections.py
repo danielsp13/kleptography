@@ -9,6 +9,7 @@ from __future__ import annotations
 import streamlit as st
 
 from kleptography.app.components.controls import (
+    SETUP_MAX_STANDARD_BITS,
     KeyMode,
     render_component_group_selection,
     render_component_number_format,
@@ -46,7 +47,9 @@ def render_experiment() -> None:
 
     st.header("1 · Choose the public parameters", anchor="yy-parameters")
     parameters = render_component_group_selection(
-        key_prefix=PREFIX, number_format=number_format
+        key_prefix=PREFIX,
+        number_format=number_format,
+        max_standard_bits=SETUP_MAX_STANDARD_BITS,
     )
 
     st.divider()

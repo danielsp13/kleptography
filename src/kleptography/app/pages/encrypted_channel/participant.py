@@ -12,6 +12,7 @@ import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 
 from kleptography.app.components.controls import (
+    SETUP_MAX_STANDARD_BITS,
     render_component_group_selection,
     render_component_number_format,
 )
@@ -49,9 +50,6 @@ _SESSIONS_MIN = 2
 _SESSIONS_MAX = len(DEFAULT_MESSAGES)
 _SESSIONS_DEFAULT = 3
 
-# From this size on (FFDHE6144, FFDHE8192), running the channel takes long.
-_SLOW_GROUP_BITS = 6144
-
 
 def render_participant() -> None:
     """Render the Participant tab."""
@@ -61,7 +59,9 @@ def render_participant() -> None:
 
     st.header("1 · Choose the public parameters", anchor="ch-parameters")
     parameters = render_component_group_selection(
-        key_prefix=PREFIX, number_format=number_format
+        key_prefix=PREFIX,
+        number_format=number_format,
+        max_standard_bits=SETUP_MAX_STANDARD_BITS,
     )
     backdoor = _backdoor_for(parameters)
 
@@ -214,15 +214,6 @@ def _render_run_section(
 ) -> None:
     """Render section 4 and run the channel when the button is pressed."""
     st.header("4 · Run the channel", anchor="ch-run")
-
-    if parameters.bit_length >= _SLOW_GROUP_BITS:
-        st.warning(
-            f"With a {parameters.bit_length}-bit prime, every modular "
-            "exponentiation takes about a second in pure Python, and each "
-            "session needs over a dozen of them. Expect a long wait, and keep "
-            "the page open until it finishes.",
-            icon=":material/hourglass_top:",
-        )
 
     if not st.button(
         "Run every session",

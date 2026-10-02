@@ -18,6 +18,7 @@ from kleptography.app.components.protocol import (
 )
 from kleptography.app.content.diffie_hellman import (
     build_standard_group_content,
+    build_standard_group_limit_content,
     build_toy_group_content,
 )
 from kleptography.app.content.numbers import NumberFormat
@@ -41,6 +42,13 @@ STANDARD_GROUPS: dict[str, Callable[[], DiffieHellmanParameters]] = {
     "FFDHE6144": ffdhe6144,
     "FFDHE8192": ffdhe8192,
 }
+
+
+# Largest RFC 7919 group offered by the sections built on the SETUP. Their
+# runs take dozens of modular exponentiations, which hold the GIL: with
+# FFDHE6144 or FFDHE8192 a single run would stall the app for every visitor
+# for minutes.
+SETUP_MAX_STANDARD_BITS = 4096
 
 
 class GroupKind(StrEnum):
@@ -82,6 +90,7 @@ def render_component_group_selection(
     *,
     key_prefix: str,
     number_format: NumberFormat,
+    max_standard_bits: int | None = None,
 ) -> DiffieHellmanParameters:
     """Render the choice of a toy or RFC 7919 group and show its parameters.
 
@@ -92,6 +101,8 @@ def render_component_group_selection(
     Args:
         key_prefix: Section prefix for widget keys and session state.
         number_format: How the parameters are displayed.
+        max_standard_bits: The largest RFC 7919 group offered, in bits, or
+            ``None`` to offer them all.
 
     Returns:
         The selected parameters.
@@ -112,8 +123,12 @@ def render_component_group_selection(
     else:
         st.markdown(build_standard_group_content(), unsafe_allow_html=True)
         name = st.selectbox(
-            "Group", options=list(STANDARD_GROUPS), key=f"{key_prefix}_group"
+            "Group",
+            options=_standard_group_names(max_standard_bits),
+            key=f"{key_prefix}_group",
         )
+        if max_standard_bits is not None:
+            st.caption(build_standard_group_limit_content(max_standard_bits))
         parameters = _standard_group(name)
 
     st.markdown(
@@ -128,6 +143,16 @@ def render_component_group_selection(
     )
 
     return parameters
+
+
+def _standard_group_names(max_bits: int | None) -> list[str]:
+    """Return the names of the RFC 7919 groups of at most ``max_bits`` bits."""
+    # The size is read from the name ("FFDHE4096"), so no group is built.
+    return [
+        name
+        for name in STANDARD_GROUPS
+        if max_bits is None or int(name.removeprefix("FFDHE")) <= max_bits
+    ]
 
 
 @cache

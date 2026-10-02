@@ -300,6 +300,22 @@ def build_standard_group_content() -> str:
     ).build()
 
 
+def build_standard_group_limit_content(max_bits: int) -> str:
+    """Return the note on why larger RFC 7919 groups are not offered.
+
+    Args:
+        max_bits: The largest group offered by the section, in bits.
+
+    Returns:
+        A one-sentence Markdown note.
+    """
+    return (
+        f"This section offers groups of up to {max_bits} bits to keep runs "
+        "short. Larger RFC 7919 groups behave exactly the same, only much "
+        "more slowly; the Diffie-Hellman section offers all five."
+    )
+
+
 def build_eavesdropper_content() -> str:
     """Return the explanation of what a passive eavesdropper can observe."""
     return CalloutComposer.danger(

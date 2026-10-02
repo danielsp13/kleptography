@@ -70,6 +70,11 @@ shows only what the transcript allows. See [channel.md](channel.md).
 - **Compute once.** Expensive work runs with the experiment and is kept in
   its value object (or memoized). With `ffdhe8192` one exponentiation takes
   about a second, and Streamlit reruns the whole page on every widget change.
+- **Bounded runs.** Big-integer exponentiation holds the GIL, so a long run
+  stalls the app for every visitor. The SETUP and channel sections offer RFC
+  7919 groups of up to 4096 bits (`SETUP_MAX_STANDARD_BITS`), where a run of
+  the channel with 5 sessions takes about 20 s; only the Diffie-Hellman
+  section offers all five groups.
 - **Show, do not recompute.** Intermediate values are read from the records
   `crypto` returns (`SetupDerivation`, `SetupRecovery`, `KeyDerivation`,
   `EncryptedMessage`, …), never recalculated in the interface.
