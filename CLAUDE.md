@@ -431,10 +431,11 @@ render_page_diffie_hellman()
   and session state never collide: `GroupKind`, `KeyMode`,
   `STANDARD_GROUPS`, the toy bit limits (8–64, default 16),
   `render_component_number_format(*, key_prefix)`,
-  `render_component_group_selection(*, key_prefix, number_format)` (toy or
-  RFC group, callouts, and p/g/q; the toy group is cached in
-  `<prefix>_toy_parameters`, and each RFC group is built once per process
-  by `_standard_group`) and
+  `render_component_group_selection(*, key_prefix, number_format,
+  max_standard_bits=None)` (toy or RFC group, callouts, and p/g/q; the toy
+  group is cached in `<prefix>_toy_parameters`, and each RFC group is built
+  once per process by `_standard_group`; `max_standard_bits` hides larger RFC
+  groups and adds a caption, `build_standard_group_limit_content`) and
   `render_component_step_navigation(*, state_key, revealed, total)`.
 - **`content/numbers.py`**: `NumberFormat` (DECIMAL, HEXADECIMAL);
   `parse_integer(text)`; `is_small(*values)`; `format_bytes(data)` (upper-case
@@ -508,7 +509,7 @@ render_page_young_yung_setup()
    │   │                 worked example (test vectors, toy H flagged),
    │   │                 implementation choices
    │   └── "Experiment": render_experiment()
-   │         number format + 1 · group (shared controls, prefix yy)
+   │         number format + 1 · group (shared controls, prefix yy, RFC groups up to 4096 bits)
    │         2 · backdoor: Backdoor.generate(parameters) in
    │             session_state["yy_backdoor"], regenerated when the group
    │             changes or on "Generate a new backdoor"
@@ -579,7 +580,7 @@ render_page_encrypted_channel()
    │                  Kerckhoffs table, how the SETUP breaks the channel,
    │                  session 1 stays confidential, toy-group brute force
    ├── "Participant": render_participant()
-   │     number format + 1 · group (shared controls, prefix ch)
+   │     number format + 1 · group (shared controls, prefix ch, RFC groups up to 4096 bits)
    │     Backdoor.generate(parameters) in ch_backdoor, regenerated only
    │       when the group changes (it exists whatever device Alice uses)
    │     2 · Alice's device: DeviceKind HONEST | COMPROMISED (ch_device_kind)
@@ -587,7 +588,7 @@ render_page_encrypted_channel()
    │       direction, editable (ch_message_<i>_{alice,bob}, examples in
    │       DEFAULT_MESSAGES set through session_state so "Restore the example
    │       messages" can put them back); empty = skipped, non-ASCII = error
-   │     4 · run (spinner, warning from 6144 bits): run_experiment() runs
+   │     4 · run (spinner): run_experiment() runs
    │       run_channel with the device or an honest participant and
    │       intercept_channel ONCE → ChannelExperiment in ch_run; ch_run_count
    │       is incremented
@@ -622,8 +623,11 @@ render_page_encrypted_channel()
   recovered one and otherwise memoizes with `lru_cache` (`_shared_secret`);
   `render_component_backdoor` reads Y from the configuration instead of
   computing `g^X`; RFC groups are built once (`controls._standard_group`,
-  `functools.cache`). Running the channel itself stays slow with large
-  groups (about 15 s per session with FFDHE8192).
+  `functools.cache`). Big-integer `pow` holds the GIL, so a long run stalls
+  the app for every visitor of the deployment: the SETUP and channel
+  sections pass `max_standard_bits=SETUP_MAX_STANDARD_BITS` (4096, in
+  `controls.py`) and offer FFDHE2048–4096 only (5 channel sessions with
+  FFDHE4096 take about 20 s); the DH section keeps all five groups.
 - **`content/encrypted_channel.py`**: intro, concept, participant and
   attacker builders, `DEFAULT_MESSAGES`, `session_step_definitions(i)` (3
   steps of a session) and `workbench_step_definitions(i)` (4 attacker steps),
@@ -1183,7 +1187,11 @@ uv run streamlit run src/kleptography/app/main.py   # launch the app
 ```
 
 The app is deployed on Streamlit Community Cloud at
-`https://dpr-kleptography.streamlit.app/` (linked from the README).
+`https://dpr-kleptography.streamlit.app/` (linked from the README). Its
+settings live in `.streamlit/config.toml` (no usage statistics, toolbar in
+`viewer` mode, `showErrorDetails = "type"`: tracebacks only in the console
+and the Cloud logs). Secrets (`.streamlit/secrets.toml`) are git-ignored and
+not used.
 
 **Definition of done:** `pytest`, `ruff check .`, `ruff format --check .`
 and `ty check` all pass. CI (`.github/workflows/ci.yml`) runs them on every
