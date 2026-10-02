@@ -1,0 +1,13 @@
+# Streamlit settings for local runs and the Community Cloud deployment.
+
+[browser]
+# Do not send usage statistics to Streamlit.
+gatherUsageStats = false
+
+[client]
+# Hide the developer options (rerun, clear cache, deploy) from visitors, but
+# keep the settings menu, which holds the light/dark theme switch.
+toolbarMode = "viewer"
+# Show only the exception type and a generic message in the browser; the
+# full traceback is still printed to the console (and the Cloud logs).
+showErrorDetails = "type"
