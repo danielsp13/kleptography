@@ -88,7 +88,8 @@ These are non-negotiable. When a task conflicts with one, stop and report.
 | Encrypted channel compromised by the SETUP (DH + KDF + AES-256-GCM) | Done (see 4.7): AEAD, KDF, channel and channel attacker fully tested; interactive section `/encrypted-channel` with idea, participant and attacker tabs. |
 | RSA / post-quantum targets | Future. |
 
-Roadmap, as stated on the home page (`app/content/home.py`):
+Roadmap, as stated on the home page (`app/content/home.py`, with
+`:green-badge[Done]` / `:orange-badge[Next]` badges; keep both in sync):
 
 1. Mathematical and implementation foundations. **(done)**
 2. Reference DH construction. **(done)**, including its interactive section.
@@ -97,21 +98,29 @@ Roadmap, as stated on the home page (`app/content/home.py`):
    **(done)**
 5. Expose intermediate values and attacker knowledge. **(done for DH and
    the encrypted channel)**
-6. Document security assumptions and limitations.
-7. Apply the same methodology to other constructions.
+6. Document security assumptions and limitations. **(done: the
+   "Limitations" section of every `docs/` page, the formulae tab and the
+   README's scope)**
+7. Apply the same methodology to other constructions. **(next)**
+
+Release 1.0.0 (2026-10-02) is tagged `v1.0.0` and described in
+`CHANGELOG.md` (Keep a Changelog format). A new release updates
+`pyproject.toml`, `kleptography.__release_date__` and `CHANGELOG.md`
+together.
 
 Every case study follows the same page progression: mathematical background
 → reference construction → kleptographic construction → experiment
 (both constructions under comparable conditions) → observation (what each
 participant can see) → analysis.
 
-Test suite: 837 tests, all passing (295 of them in `tests/crypto/dh/setup/`,
+Test suite: 911 tests, all passing (295 of them in `tests/crypto/dh/setup/`,
 50 in `tests/crypto/aead/`, 43 in `tests/crypto/kdf/`, 71 in
 `tests/crypto/channel/` and 59 in `tests/crypto/channel/setup/`).
-`crypto/` and `math/` are at 100% coverage. On
+`crypto/` and `math/` are at 100% coverage, and so is `content/numbers.py`
+(`tests/app/content/test_numbers.py`, plain functions). On
 the maintainer's request, the new UI modules (`navigation.py`,
 `components/{navigation,protocol,controls,young_yung_setup,encrypted_channel}.py`,
-`content/{diffie_hellman,young_yung_setup,encrypted_channel,numbers}.py`,
+`content/{diffie_hellman,young_yung_setup,encrypted_channel}.py`,
 `pages/*`) **have no tests yet. Do not add page or component tests unless a task asks for them.**
 
 ## 4. Architecture and interrelations
@@ -727,14 +736,18 @@ timeline steps.
   passed through `render_html`. Callouts embed their CSS in Python.
   Page-wide rules (e.g. `protocol.css`) are injected with
   `render_html("", css=load_css(...))`.
-- `render_template(name, **ctx)` builds a `jinja2.Template` from
-  `html/templates/<name>`, read as UTF-8. `load_css(name)` reads
+- `render_template(name, **ctx)` builds a `jinja2.Template` with
+  `autoescape=True` from `html/templates/<name>`, read as UTF-8, so context
+  values must be plain text, never markup. `load_css(name)` reads
   `css/styles/<name>`. Both resolve paths relative to their own module.
 - The version has a single source, `pyproject.toml` (`1.0.0`):
   `kleptography.__version__` reads it from the installed package metadata,
-  and the header and footer import it. Other header and footer metadata
-  (release date, author, links, and the `kleptographic_mechanisms` list) is
-  **hardcoded** in `components/*.py`. The footer links point to the
+  and the header and footer import it. The release date has one source
+  too, `kleptography.__release_date__` (ISO 8601; the footer's copyright
+  year is its first four characters). Other header and footer metadata
+  (author, links, and the `kleptographic_mechanisms` list) is
+  **hardcoded** in `components/*.py`. The README's version badge reads the
+  latest Git tag from shields.io. The footer links point to the
   repository, to `docs/` on `main` (`.../tree/main/docs`) and to its
   `LICENSE`. Header pills stay short: `kleptographic_mechanisms`
   names the targeted cryptosystem (`"Diffie-Hellman"` covers the SETUP and
@@ -1194,8 +1207,9 @@ and the Cloud logs). Secrets (`.streamlit/secrets.toml`) are git-ignored and
 not used.
 
 **Definition of done:** `pytest`, `ruff check .`, `ruff format --check .`
-and `ty check` all pass. CI (`.github/workflows/ci.yml`) runs them on every
-push, with tests on Python 3.12, 3.13 and 3.14. Pre-commit runs Ruff and ty
+and `ty check` all pass. CI (`.github/workflows/ci.yml`, read-only
+`contents` permission) runs them on every push and pull request, with tests
+on Python 3.12, 3.13 and 3.14. Pre-commit runs Ruff and ty
 locally.
 
 Runtime dependencies: `streamlit`, `sympy`, `jinja2` and `cryptography`

@@ -1,5 +1,7 @@
 """Finite-field Diffie-Hellman groups standardized in RFC 7919."""
 
+from __future__ import annotations
+
 from kleptography.crypto.dh.groups.rfc7919.ffdhe2048 import ffdhe2048
 from kleptography.crypto.dh.groups.rfc7919.ffdhe3072 import ffdhe3072
 from kleptography.crypto.dh.groups.rfc7919.ffdhe4096 import ffdhe4096

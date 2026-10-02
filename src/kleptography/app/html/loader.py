@@ -1,5 +1,7 @@
 """Rendering of the Jinja2 HTML templates bundled with the application."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from jinja2 import Template
@@ -13,6 +15,9 @@ def render_template(
 ) -> str:
     """Render a Jinja2 template.
 
+    Context values are HTML-escaped (autoescape is on), so they must be plain
+    text, never markup.
+
     Args:
         template_name: The file name inside ``html/templates``.
         **context: The variables available to the template.
@@ -22,6 +27,7 @@ def render_template(
     """
     template_path = _TEMPLATES_DIR / template_name
 
-    template = Template(template_path.read_text(encoding="utf-8"))
+    # Context values are plain text: escaping keeps any markup in them inert.
+    template = Template(template_path.read_text(encoding="utf-8"), autoescape=True)
 
     return template.render(**context)

@@ -15,7 +15,7 @@ attacker gains from it.
 **[Try the live demo →](https://dpr-kleptography.streamlit.app/)**
 
 [![CI](https://github.com/danielsp13/kleptography/actions/workflows/ci.yml/badge.svg)](https://github.com/danielsp13/kleptography/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+[![Version](https://img.shields.io/github/v/tag/danielsp13/kleptography?label=version&color=blue)](CHANGELOG.md)
 ![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-3776AB?logo=python&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 ![Coverage](https://img.shields.io/badge/coverage%20(crypto%20%26%20math)-100%25-brightgreen)
@@ -76,7 +76,7 @@ experiment with, step by step.
   `z`, the attacker's candidates, derived keys, nonces, tags) is exposed
   through immutable value objects and shown in the interface, with the
   formula behind it.
-- **Verified, not just written.** 837 tests, including hand-computed test
+- **Verified, not just written.** 911 tests, including hand-computed test
   vectors, the published GCM test vectors, independent recomputation of
   every KDF output, exhaustive checks over small groups, and 100% coverage
   of the cryptographic and mathematical core. Typed, linted and checked in
@@ -226,7 +226,8 @@ uv run ty check                                       # type check
 uv run pre-commit install                             # Ruff and ty on commit
 ```
 
-CI runs linting, formatting, type checking and the test suite on every push.
+CI runs linting, formatting, type checking and the test suite on every push
+and pull request.
 
 ## Scope and responsible use
 
@@ -257,6 +258,10 @@ generation and post-quantum schemes like ML-DSA.
   Key-Establishment Schemes", 2020.
 - D. A. McGrew and J. Viega, "The Galois/Counter Mode of Operation (GCM)",
   2005.
+
+## Changelog
+
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

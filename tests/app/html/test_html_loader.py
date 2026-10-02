@@ -1,7 +1,7 @@
 """Tests for the Jinja2 template loader.
 
 They check that templates are read as UTF-8 from the templates directory,
-rendered with their context (variables, conditionals, loops, escaping),
+rendered with their context (variables, conditionals, loops, HTML escaping),
 and that read and syntax errors propagate.
 """
 
@@ -127,7 +127,7 @@ def test_render_template_renders_jinja_loops() -> None:
 
 
 def test_render_template_escapes_html_by_default() -> None:
-    """HTML in values is inserted unescaped (autoescape is off)."""
+    """HTML in values is escaped (autoescape is on)."""
     with patch(
         "kleptography.app.html.loader.Path.read_text",
         return_value="{{ value }}",
@@ -137,7 +137,7 @@ def test_render_template_escapes_html_by_default() -> None:
             value="<strong>Hello</strong>",
         )
 
-    assert result == "<strong>Hello</strong>"
+    assert result == "&lt;strong&gt;Hello&lt;/strong&gt;"
 
 
 def test_render_template_preserves_plain_text() -> None:
